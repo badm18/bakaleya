@@ -2,6 +2,10 @@ import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url'
+import { runMigrations } from './db/index';
+import { registerOrderHandlers } from 'app/src-electron/ipc/orders';
+import { registerProductHandlers } from './ipc/products';
+import { registerCustomerHandlers } from 'app/src-electron/ipc/customers';
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -50,8 +54,13 @@ async function createWindow() {
   });
 }
 
-void app.whenReady().then(createWindow);
-
+void app.whenReady().then(() => {
+  runMigrations();
+  registerOrderHandlers();
+  registerProductHandlers();
+  registerCustomerHandlers();
+  void createWindow();
+});
 app.on('window-all-closed', () => {
   if (platform !== 'darwin') {
     app.quit();

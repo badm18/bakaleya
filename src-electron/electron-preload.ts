@@ -1,29 +1,31 @@
-/**
- * This file is used specifically for security reasons.
- * Here you can access Nodejs stuff and inject functionality into
- * the renderer thread (accessible there through the "window" object)
- *
- * WARNING!
- * If you import anything from node_modules, then make sure that the package is specified
- * in package.json > dependencies and NOT in devDependencies
- *
- * Example (injects window.myAPI.doAThing() into renderer thread):
- *
- *   import { contextBridge } from 'electron'
- *
- *   contextBridge.exposeInMainWorld('myAPI', {
- *     doAThing: () => {}
- *   })
- *
- * WARNING!
- * If accessing Node functionality (like importing @electron/remote) then in your
- * electron-main.ts you will need to set the following when you instantiate BrowserWindow:
- *
- * mainWindow = new BrowserWindow({
- *   // ...
- *   webPreferences: {
- *     // ...
- *     sandbox: false // <-- to be able to import @electron/remote in preload script
- *   }
- * }
- */
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  // Номенклатура
+  products: {
+    getAll: () => ipcRenderer.invoke('products:getAll'),
+    search: (query: string) => ipcRenderer.invoke('products:search', query),
+    create: (data: unknown) => ipcRenderer.invoke('products:create', data),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('products:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('products:delete', id),
+  },
+
+  // Клиенты
+  customers: {
+    getAll: () => ipcRenderer.invoke('customers:getAll'),
+    search: (query: string) => ipcRenderer.invoke('customers:search', query),
+    create: (data: unknown) => ipcRenderer.invoke('customers:create', data),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('customers:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('customers:delete', id),
+  },
+
+  // Заявки
+  orders: {
+    getList: (page: number, limit: number) => ipcRenderer.invoke('orders:getList', page, limit),
+    getById: (id: number) => ipcRenderer.invoke('orders:getById', id),
+    create: (order: unknown, items: unknown) => ipcRenderer.invoke('orders:create', order, items),
+    update: (id: number, order: unknown, items: unknown) =>
+      ipcRenderer.invoke('orders:update', id, order, items),
+    delete: (id: number) => ipcRenderer.invoke('orders:delete', id),
+  },
+});
