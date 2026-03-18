@@ -3,24 +3,56 @@ import db from '../db/index';
 import type { Customer } from '../db/index';
 
 export function registerCustomerHandlers() {
-  ipcMain.handle('customers:getList', (_event, offset = 0, limit = 100) => {
+  ipcMain.handle('customers:getAll', () => {
     const items = db
       .prepare(
         `
-    SELECT * FROM customers ORDER BY created_at DESC LIMIT ? OFFSET ?
+    SELECT
+      id,
+      name,
+      created_at
+    FROM customers
+    WHERE deleted_at IS NULL
+    ORDER BY created_at DESC
   `,
       )
-      .all(limit, offset);
-    const total = (db.prepare('SELECT COUNT(*) as count FROM customers').get() as { count: number })
-      .count;
+      .all();
+    const total = (
+      db.prepare('SELECT COUNT(*) as count FROM customers WHERE deleted_at IS NULL').get() as {
+        count: number;
+      }
+    ).count;
     return { items, total };
   });
 
-  ipcMain.handle('customers:search', (_event, query: string) =>
-    db
-      .prepare('SELECT * FROM customers WHERE deleted_at IS NULL AND name LIKE ? ORDER BY name')
-      .all(`%${query}%`),
-  );
+  ipcMain.handle('customers:search', (_event, name: string) => {
+    const query = `%${name.toLowerCase()}%`;
+
+    const items = db
+      .prepare(
+        `
+      SELECT id, name, created_at
+      FROM customers
+      WHERE deleted_at IS NULL AND LOWER(name) LIKE ?
+      ORDER BY name
+    `,
+      )
+      .all(query);
+
+    const total = (
+      db
+        .prepare(
+          `
+        SELECT COUNT(*) as count
+        FROM customers
+        WHERE deleted_at IS NULL AND LOWER(name) LIKE ?
+      `,
+        )
+        .get(query) as { count: number }
+    ).count;
+
+    return { items, total };
+  });
 
   ipcMain.handle('customers:create', (_event, data: Pick<Customer, 'name'>) =>
     db.prepare('INSERT INTO customers (name) VALUES (@name)').run(data),

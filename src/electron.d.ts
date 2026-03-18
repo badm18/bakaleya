@@ -1,3 +1,5 @@
+import type { ICustomerItem } from 'stores/interfaces/customers-store.interfaces';
+
 export {};
 
 declare global {
@@ -11,8 +13,14 @@ declare global {
         delete: (id: number) => Promise<unknown>;
       };
       customers: {
-        getAll: () => Promise<unknown[]>;
-        search: (query: string) => Promise<unknown[]>;
+        getAll: () => Promise<{
+          items: ICustomerItem[];
+          total: number;
+        }>;
+        search: (query: string) => Promise<{
+          items: ICustomerItem[];
+          total: number;
+        }>;
         create: (data: unknown) => Promise<unknown>;
         update: (id: number, data: unknown) => Promise<unknown>;
         delete: (id: number) => Promise<unknown>;

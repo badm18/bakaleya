@@ -13,7 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Клиенты
   customers: {
     getAll: () => ipcRenderer.invoke('customers:getAll'),
-    search: (query: string) => ipcRenderer.invoke('customers:search', query),
+    search: (name: string) => ipcRenderer.invoke('customers:search', name),
     create: (data: unknown) => ipcRenderer.invoke('customers:create', data),
     update: (id: number, data: unknown) => ipcRenderer.invoke('customers:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('customers:delete', id),
