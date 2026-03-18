@@ -7,21 +7,20 @@ export function registerCustomerHandlers() {
     const items = db
       .prepare(
         `
-    SELECT
-      id,
-      name,
-      created_at
-    FROM customers
-    WHERE deleted_at IS NULL
-    ORDER BY created_at DESC
-  `,
+        SELECT id, name, created_at
+        FROM customers
+        WHERE deleted_at IS NULL
+        ORDER BY created_at DESC
+      `,
       )
       .all();
+
     const total = (
       db.prepare('SELECT COUNT(*) as count FROM customers WHERE deleted_at IS NULL').get() as {
         count: number;
       }
     ).count;
+
     return { items, total };
   });
 
@@ -31,11 +30,11 @@ export function registerCustomerHandlers() {
     const items = db
       .prepare(
         `
-      SELECT id, name, created_at
-      FROM customers
-      WHERE deleted_at IS NULL AND LOWER(name) LIKE ?
-      ORDER BY name
-    `,
+        SELECT id, name, created_at
+        FROM customers
+        WHERE deleted_at IS NULL AND name_lower LIKE ?
+        ORDER BY name
+      `,
       )
       .all(query);
 
@@ -43,10 +42,10 @@ export function registerCustomerHandlers() {
       db
         .prepare(
           `
-        SELECT COUNT(*) as count
-        FROM customers
-        WHERE deleted_at IS NULL AND LOWER(name) LIKE ?
-      `,
+          SELECT COUNT(*) as count
+          FROM customers
+          WHERE deleted_at IS NULL AND name_lower LIKE ?
+        `,
         )
         .get(query) as { count: number }
     ).count;
@@ -55,11 +54,15 @@ export function registerCustomerHandlers() {
   });
 
   ipcMain.handle('customers:create', (_event, data: Pick<Customer, 'name'>) =>
-    db.prepare('INSERT INTO customers (name) VALUES (@name)').run(data),
+    db
+      .prepare('INSERT INTO customers (name, name_lower) VALUES (@name, @name_lower)')
+      .run({ name: data.name, name_lower: data.name.toLowerCase() }),
   );
 
   ipcMain.handle('customers:update', (_event, id: number, data: Pick<Customer, 'name'>) =>
-    db.prepare('UPDATE customers SET name=@name WHERE id=@id').run({ ...data, id }),
+    db
+      .prepare('UPDATE customers SET name=@name, name_lower=@name_lower WHERE id=@id')
+      .run({ name: data.name, name_lower: data.name.toLowerCase(), id }),
   );
 
   ipcMain.handle('customers:delete', (_event, id: number) =>

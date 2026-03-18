@@ -19,12 +19,11 @@ const migrations = [
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,                                    -- название товара
+        name_lower TEXT NOT NULL,                              -- нижний регистр для поиска
         unit TEXT NOT NULL CHECK(unit IN ('kg', 'pcs')),      -- единица измерения: kg или pcs
         price_buy REAL,                                        -- цена закупки
         price_sell REAL,                                       -- цена продажи
         kg_per_pcs REAL,                                       -- кг в 1 штуке (только для pcs, необязательно)
-        parent_id INTEGER REFERENCES products(id),             -- родительская папка (NULL = корень)
-        is_folder BOOLEAN NOT NULL DEFAULT FALSE,                  -- 1 = папка, 0 = элемент
         deleted_at DATETIME,                                   -- soft delete, NULL = активен
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -37,8 +36,7 @@ const migrations = [
       CREATE TABLE IF NOT EXISTS customers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,                                    -- название клиента
-        parent_id INTEGER REFERENCES customers(id),            -- родительская папка (NULL = корень)
-        is_folder BOOLEAN NOT NULL DEFAULT FALSE,              -- 1 = папка, 0 = элемент
+        name_lower TEXT NOT NULL,                              -- нижний регистр для поиска
         deleted_at DATETIME,                                   -- soft delete, NULL = активен
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
@@ -75,9 +73,9 @@ const migrations = [
     `,
   },
 ];
+
 export function runMigrations() {
   const apply = db.transaction(() => {
-    // Сначала создаём таблицу миграций если её нет
     db.exec(`
       CREATE TABLE IF NOT EXISTS migrations (
         id INTEGER PRIMARY KEY,
@@ -86,7 +84,6 @@ export function runMigrations() {
       );
     `);
 
-    // Применяем только те миграции которых ещё нет
     for (const migration of migrations) {
       const applied = db.prepare('SELECT id FROM migrations WHERE id = ?').get(migration.id);
 
@@ -108,6 +105,7 @@ export function runMigrations() {
 export interface Product {
   id: number;
   name: string;
+  name_lower: string;
   unit: 'kg' | 'pcs';
   price_buy: number | null;
   price_sell: number | null;
@@ -119,6 +117,7 @@ export interface Product {
 export interface Customer {
   id: number;
   name: string;
+  name_lower: string;
   deleted_at: string | null;
   created_at: string;
 }

@@ -1,3 +1,4 @@
+import type { IProductItem } from 'stores/interfaces/products-store.interfaces';
 import type { ICustomerItem } from 'stores/interfaces/customers-store.interfaces';
 
 export {};
@@ -6,8 +7,14 @@ declare global {
   interface Window {
     electronAPI: {
       products: {
-        getAll: () => Promise<unknown[]>;
-        search: (query: string) => Promise<unknown[]>;
+        getAll: () => Promise<{
+          items: IProductItem[];
+          total: number;
+        }>;
+        search: (query: string) => Promise<{
+          items: IProductItem[];
+          total: number;
+        }>;
         create: (data: unknown) => Promise<unknown>;
         update: (id: number, data: unknown) => Promise<unknown>;
         delete: (id: number) => Promise<unknown>;

@@ -13,7 +13,7 @@ const routes: RouteRecordRaw[] = [
         name: 'order-edit',
         component: () => import('pages/OrderNew.vue'),
       },
-      { path: 'products', name: 'products', component: () => import('pages/Products.vue') },
+      { path: 'products', name: 'products', component: () => import('pages/products/pages/ProductsPage.vue') },
       { path: 'customers', name: 'customers', component: () => import('pages/customers/pages/CustomersPage.vue') },
     ],
   },

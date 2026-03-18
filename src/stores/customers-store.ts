@@ -106,6 +106,7 @@ export const useCustomersStore = defineStore('customers', {
       try {
         await window.electronAPI.customers.delete(customerId);
         this.items = this.items.filter((item) => item.id !== customerId);
+        this.totalCount -= 1;
         Notify.create({ type: 'positive', message: 'Клиент удалён', timeout: 1500 });
       } catch (e) {
         errorHandler(e);
