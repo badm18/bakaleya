@@ -1,5 +1,6 @@
 import type { IProductItem } from 'stores/interfaces/products-store.interfaces';
 import type { ICustomerItem } from 'stores/interfaces/customers-store.interfaces';
+import type { IOrderDetail, IOrderListItem } from 'stores/interfaces/orders-store.interfaces';
 
 export {};
 
@@ -33,8 +34,14 @@ declare global {
         delete: (id: number) => Promise<unknown>;
       };
       orders: {
-        getList: (page: number, limit: number) => Promise<unknown>;
-        getById: (id: number) => Promise<unknown>;
+        getList: (
+          page: number,
+          limit: number,
+        ) => Promise<{
+          items: IOrderListItem[];
+          total: number;
+        }>;
+        getById: (id: number) => Promise<IOrderDetail>;
         create: (order: unknown, items: unknown) => Promise<unknown>;
         update: (id: number, order: unknown, items: unknown) => Promise<unknown>;
         delete: (id: number) => Promise<unknown>;

@@ -48,6 +48,7 @@ const migrations = [
     sql: `
       CREATE TABLE IF NOT EXISTS orders (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        organization_name TEXT NOT NULL DEFAULT '',
         customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL, -- ссылка на клиента (NULL если клиент удалён)
         customer_name TEXT NOT NULL,                           -- snapshot имени клиента на момент заявки
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -124,6 +125,7 @@ export interface Customer {
 
 export interface Order {
   id: number;
+  organization_name: string;
   customer_id: number | null;
   customer_name: string;
   created_at: string;
