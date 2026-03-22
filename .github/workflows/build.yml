@@ -1,0 +1,39 @@
+name: Build Windows
+
+on:
+  workflow_dispatch: # запуск вручную
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Install Quasar CLI
+        run: npm install -g @quasar/cli
+
+      - name: Rebuild native modules
+        run: npm run rebuild
+
+      - name: Build
+        run: quasar build -m electron
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakaleya-windows
+          path: dist/electron/Packaged/*.exe
+          retention-days: 30
