@@ -5,13 +5,14 @@
       :key="orderData.order.id"
       :data-order-index="orderIndex"
       class="order-wrapper"
-      :class="{ 'page-break': orderIndex > 0 }"
+      :class="{ 'page-break': orderIndex > 0, 'two-up': fitsMap[orderIndex] === true }"
     >
       <!-- Невидимый элемент для измерения высоты -->
       <div class="measure-wrap">
         <div :ref="(el) => setMeasureRef(el, orderIndex)" class="measure-form">
           <PrintForm :order="orderData.order" :items="orderData.items" />
         </div>
+        <div :ref="setHalfRulerRef" class="half-ruler" aria-hidden="true"></div>
       </div>
 
       <!-- Два экземпляра на одном листе -->
@@ -20,7 +21,7 @@
           <PrintForm :order="orderData.order" :items="orderData.items" />
         </div>
         <div class="half-divider"></div>
-        <div class="half-page">
+        <div class="half-page half-page-flipped">
           <PrintForm :order="orderData.order" :items="orderData.items" />
         </div>
       </template>
@@ -58,9 +59,14 @@ const emit = defineEmits<{
 
 const fitsMap = ref<Record<number, boolean | null>>({});
 const measureRefs = ref<Record<number, HTMLElement>>({});
+const halfRulerRef = ref<HTMLElement | null>(null);
 
 const setMeasureRef = (el: unknown, index: number) => {
   if (el) measureRefs.value[index] = el as HTMLElement;
+};
+
+const setHalfRulerRef = (el: unknown) => {
+  if (el && !halfRulerRef.value) halfRulerRef.value = el as HTMLElement;
 };
 
 onMounted(async () => {
@@ -70,13 +76,12 @@ onMounted(async () => {
 
   await nextTick();
 
-  // A4 высота минус поля принтера (10мм сверху + 10мм снизу) = 277мм
-  // Половина = 138мм при 96dpi
-  const halfPagePx = Math.round(138 * (96 / 25.4));
+  // Берем фактическую высоту половины листа из CSS, чтобы совпадало с печатью.
+  const halfPagePx = Math.round(halfRulerRef.value?.getBoundingClientRect().height ?? 0);
 
   props.ordersData.forEach((_, index) => {
     const el = measureRefs.value[index];
-    if (!el) return;
+    if (!el || !halfPagePx) return;
     console.log(
       'clientHeight:',
       el.clientHeight,
@@ -95,6 +100,16 @@ onMounted(async () => {
 <style lang="scss">
 .print-root {
   font-family: 'Times New Roman', Times, serif;
+  --print-page-height-mm: 297mm;
+  --print-page-margin-mm: 10mm;
+  --print-content-height-mm: calc(
+    var(--print-page-height-mm) - (var(--print-page-margin-mm) * 2)
+  );
+  --print-divider-height-mm: 4mm;
+  --print-divider-offset-mm: 1.5mm;
+  --print-half-height-mm: calc(
+    (var(--print-content-height-mm) - var(--print-divider-height-mm)) / 2
+  );
 }
 
 .order-wrapper {
@@ -119,17 +134,23 @@ onMounted(async () => {
   width: 100%;
 }
 
+.half-ruler {
+  width: 1px;
+  height: var(--print-half-height-mm);
+}
+
 .half-page {
-  height: 138mm;
+  height: var(--print-half-height-mm);
   overflow: hidden;
   box-sizing: border-box;
   padding-right: 1px;
 }
 
 .half-divider {
-  height: 4mm;
+  height: var(--print-divider-height-mm);
   display: flex;
   align-items: center;
+  transform: translateY(var(--print-divider-offset-mm));
 
   &::after {
     content: '';
@@ -140,7 +161,7 @@ onMounted(async () => {
 }
 
 .full-page {
-  min-height: 277mm;
+  min-height: var(--print-content-height-mm);
   box-sizing: border-box;
 }
 
@@ -150,18 +171,31 @@ onMounted(async () => {
     size: A4;
   }
 
+  .order-wrapper.two-up {
+    height: var(--print-content-height-mm);
+    display: flex;
+    flex-direction: column;
+  }
+
   .measure-wrap {
     display: none !important;
   }
 
   .half-page {
-    height: 138mm;
+    height: auto;
+    flex: 1 1 0;
     page-break-inside: avoid;
   }
 
   .half-divider {
+    flex: 0 0 var(--print-divider-height-mm);
     page-break-after: avoid;
     page-break-before: avoid;
+  }
+
+  .half-page-flipped {
+    transform: rotate(180deg);
+    transform-origin: center;
   }
 
   .full-page {
@@ -171,5 +205,10 @@ onMounted(async () => {
   .page-break {
     page-break-before: always;
   }
+}
+
+.half-page-flipped {
+  transform: rotate(180deg);
+  transform-origin: center;
 }
 </style>
