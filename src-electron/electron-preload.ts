@@ -28,4 +28,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('orders:update', id, order, items),
     delete: (id: number) => ipcRenderer.invoke('orders:delete', id),
   },
+  // Печать
+  print: {
+    orders: (ids: number[]) => ipcRenderer.invoke('print:orders', ids),
+    getOrdersData: (ids: number[]) => ipcRenderer.invoke('print:getOrdersData', ids),
+    trigger: () => ipcRenderer.invoke('print:trigger'),
+  },
 });

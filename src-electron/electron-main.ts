@@ -6,6 +6,7 @@ import { runMigrations } from './db/index';
 import { registerOrderHandlers } from 'app/src-electron/ipc/orders';
 import { registerProductHandlers } from './ipc/products';
 import { registerCustomerHandlers } from 'app/src-electron/ipc/customers';
+import { registerPrintHandlers } from 'app/src-electron/ipc/print-window';
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -56,6 +57,7 @@ async function createWindow() {
 
 void app.whenReady().then(() => {
   runMigrations();
+  registerPrintHandlers();
   registerOrderHandlers();
   registerProductHandlers();
   registerCustomerHandlers();

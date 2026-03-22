@@ -33,3 +33,8 @@ export interface IOrderPayload {
   customer_id: number | null;
   customer_name: string;
 }
+
+export interface IOrderData {
+  order: IOrderItem;
+  items: IDetailItem[];
+}

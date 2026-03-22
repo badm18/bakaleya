@@ -167,34 +167,20 @@ export default defineConfig((/* ctx */) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/configuring-electron
     electron: {
-      // extendElectronMainConf (esbuildConf) {},
-      // extendElectronPreloadConf (esbuildConf) {},
-
-      // extendPackageJson (json) {},
-
-      // Electron preload scripts (if any) from /src-electron, WITHOUT file extension
       preloadScripts: ['electron-preload'],
-
-      // specify the debugging port to use for the Electron app when running in development mode
       inspectPort: 5858,
-
-      bundler: 'packager', // 'packager' or 'builder'
-
-      packager: {
-        // https://github.com/electron-userland/electron-packager/blob/master/docs/api.md#options
-        // OS X / Mac App Store
-        // appBundleId: '',
-        // appCategoryType: '',
-        // osxSign: '',
-        // protocol: 'myapp://path',
-        // Windows only
-        // win32metadata: { ... }
-      },
+      bundler: 'builder',
 
       builder: {
-        // https://www.electron.build/configuration
-
-        appId: 'bakaleya',
+        appId: 'com.bakaleya.app',
+        productName: 'Bakaleya',
+        win: {
+          target: 'nsis', // установщик .exe
+        },
+        nsis: {
+          oneClick: false, // показывает мастер установки
+          allowToChangeInstallationDirectory: true,
+        },
       },
     },
 

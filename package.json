@@ -11,7 +11,7 @@
     "format": "prettier --write \"**/*.{js,ts,vue,,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
-    "build": "quasar build",
+    "build": "quasar build -m electron",
     "postinstall": "quasar prepare",
     "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
@@ -34,6 +34,7 @@
     "@vue/eslint-config-typescript": "14.7.0",
     "autoprefixer": "10.4.27",
     "electron": "41.0.2",
+    "electron-builder": "^26.8.1",
     "electron-rebuild": "3.2.9",
     "eslint": "9.39.4",
     "eslint-plugin-vue": "10.8.0",

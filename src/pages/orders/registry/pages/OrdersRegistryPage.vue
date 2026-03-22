@@ -151,9 +151,8 @@ const openOrder = (id: number) => {
   void router.push({ name: 'order-edit', params: { id } });
 };
 
-const printOrder = (id: number) => {
-  // TODO: реализовать печать
-  console.log('print', id);
+const printOrder = async (id: number) => {
+  await window.electronAPI.print.orders([id]);
 };
 
 const confirmDelete = (order: IOrderItem) => {
