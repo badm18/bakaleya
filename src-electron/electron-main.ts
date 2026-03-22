@@ -7,6 +7,7 @@ import { registerOrderHandlers } from 'app/src-electron/ipc/orders';
 import { registerProductHandlers } from './ipc/products';
 import { registerCustomerHandlers } from 'app/src-electron/ipc/customers';
 import { registerPrintHandlers } from 'app/src-electron/ipc/print-window';
+import { initUpdater } from 'app/src-electron/updater';
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -62,6 +63,10 @@ void app.whenReady().then(() => {
   registerProductHandlers();
   registerCustomerHandlers();
   void createWindow();
+
+  if (!process.env.DEV) {
+    initUpdater();
+  }
 });
 app.on('window-all-closed', () => {
   if (platform !== 'darwin') {

@@ -174,11 +174,16 @@ export default defineConfig((/* ctx */) => {
       builder: {
         appId: 'com.bakaleya.app',
         productName: 'Bakaleya',
+        publish: {
+          provider: 'github',
+          owner: 'badm18',
+          repo: 'bakaleya',
+        },
         win: {
-          target: 'nsis', // установщик .exe
+          target: 'nsis',
         },
         nsis: {
-          oneClick: false, // показывает мастер установки
+          oneClick: false,
           allowToChangeInstallationDirectory: true,
         },
       },
