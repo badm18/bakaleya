@@ -1,5 +1,7 @@
-import { autoUpdater } from 'electron-updater';
 import { dialog } from 'electron';
+
+import pkg from 'electron-updater';
+const { autoUpdater } = pkg;
 
 export function initUpdater() {
   autoUpdater.autoDownload = false;
