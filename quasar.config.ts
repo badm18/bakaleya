@@ -179,11 +179,15 @@ export default defineConfig((/* ctx */) => {
           owner: 'badm18',
           repo: 'bakaleya',
         },
+        extraMetadata: {
+          name: 'Bakaleya',
+        },
         win: {
           target: 'nsis',
         },
         nsis: {
           oneClick: false,
+          shortcutName: 'Bakaleya',
           allowToChangeInstallationDirectory: true,
         },
       },
