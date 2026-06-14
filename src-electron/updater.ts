@@ -1,4 +1,5 @@
 import { dialog } from 'electron';
+import { writeErrorLog } from './logger';
 
 import pkg from 'electron-updater';
 const { autoUpdater } = pkg;
@@ -36,6 +37,7 @@ export function initUpdater() {
 
   autoUpdater.on('error', (err) => {
     console.error('Updater error:', err);
+    writeErrorLog('Updater error', err);
   });
 
   // Проверяем обновления при старте

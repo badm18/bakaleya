@@ -293,23 +293,29 @@ const setQtyRef = (el: unknown, index: number) => {
 const totalSum = computed(() => form.value.items.reduce((sum, item) => sum + item.total, 0));
 
 onMounted(async () => {
-  const [customersData, productsData] = await Promise.all([
-    window.electronAPI.customers.getAll(),
-    window.electronAPI.products.getAll(),
-  ]);
+  try {
+    const [customersData, productsData] = await Promise.all([
+      window.electronAPI.customers.getAll(),
+      window.electronAPI.products.getAll(),
+    ]);
 
-  allCustomers.value = customersData.items;
-  customerOptions.value = customersData.items;
-  allProducts.value = productsData.items;
-  productOptions.value = productsData.items;
+    allCustomers.value = customersData.items;
+    customerOptions.value = customersData.items;
+    allProducts.value = productsData.items;
+    productOptions.value = productsData.items;
 
-  if (isEdit.value) {
-    await loadOrder();
+    if (isEdit.value) {
+      await loadOrder();
+    }
+  } catch (error) {
+    errorHandler(error, 'Не удалось загрузить данные для заявки');
+    await router.push({ name: 'orders' });
+    return;
   }
 
   await nextTick();
   isLoaded.value = true;
-});;
+});
 
 onUnmounted(() => {
   ordersStore.clearCurrentOrder();

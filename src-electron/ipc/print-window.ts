@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import db from '../db/index';
+import { writeErrorLog } from '../logger';
 
 const currentDir = fileURLToPath(new URL('.', import.meta.url));
 const isDev = !!process.env.DEV;
@@ -11,6 +12,13 @@ export function registerPrintHandlers() {
   ipcMain.handle('print:getOrdersData', (_event, ids: number[]) => {
     return ids.map((id) => {
       const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+
+      if (!order) {
+        const error = new Error(`Заявка #${id} не найдена`);
+        writeErrorLog('print:getOrdersData order not found', { id });
+        throw error;
+      }
+
       const items = db
         .prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY serial_number ASC')
         .all(id);
