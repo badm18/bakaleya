@@ -1,7 +1,13 @@
 name: Build Windows
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -29,8 +35,8 @@ jobs:
       - name: Rebuild native modules
         run: npm run rebuild
 
-      - name: Build
-        run: quasar build -m electron
+      - name: Build and publish
+        run: quasar build -m electron -P always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -38,5 +44,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bakaleya-windows
-          path: dist/electron/Packaged/*.exe
+          path: |
+            dist/electron/Packaged/*.exe
+            dist/electron/Packaged/*.yml
+            dist/electron/Packaged/*.blockmap
           retention-days: 30
