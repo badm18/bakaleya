@@ -13,6 +13,11 @@ export type IOrderItemPayload = Omit<IDetailItem, 'id' | 'order_id'>;
 
 const LIMIT = 50;
 
+const normalizeOrderItem = (item: IOrderItem): IOrderItem => ({
+  ...item,
+  total_sum: Number.isFinite(Number(item.total_sum)) ? Number(item.total_sum) : 0,
+});
+
 export const useOrdersStore = defineStore('orders', {
   state: () => ({
     items: [] as IOrderItem[],
@@ -34,11 +39,10 @@ export const useOrdersStore = defineStore('orders', {
       try {
         this.loading = true;
         const data = await window.electronAPI.orders.getList(0, LIMIT);
-        this.items = data.items;
+        this.items = data.items.map(normalizeOrderItem);
         this.totalCount = data.total;
       } catch (e) {
         errorHandler(e);
-        throw e;
       } finally {
         this.loading = false;
       }
@@ -50,10 +54,9 @@ export const useOrdersStore = defineStore('orders', {
       try {
         this.loadingMore = true;
         const data = await window.electronAPI.orders.getList(this.items.length, LIMIT);
-        this.items.push(...data.items);
+        this.items.push(...data.items.map(normalizeOrderItem));
       } catch (e) {
         errorHandler(e);
-        throw e;
       } finally {
         this.loadingMore = false;
       }

@@ -136,6 +136,7 @@ import { formatDate } from 'src/utils/formatDate';
 import { ref, onMounted } from 'vue';
 import { useOrdersStore } from 'stores/orders-store';
 import type { IOrderItem } from 'stores/interfaces/orders-store.interfaces';
+import { errorHandler } from 'src/utils/errorHandler';
 
 const router = useRouter();
 const ordersStore = useOrdersStore();
@@ -144,15 +145,23 @@ const scrollContainerRef = ref<HTMLElement | null>(null);
 const deleteDialogOpen = ref(false);
 const deletingOrder = ref<IOrderItem | null>(null);
 
-const formatPrice = (val: number) =>
-  val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const formatPrice = (val: number | null | undefined) => {
+  const normalized = Number(val);
+  const safeValue = Number.isFinite(normalized) ? normalized : 0;
+
+  return safeValue.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 const openOrder = (id: number) => {
   void router.push({ name: 'order-edit', params: { id } });
 };
 
 const printOrder = async (id: number) => {
-  await window.electronAPI.print.orders([id]);
+  try {
+    await window.electronAPI.print.orders([id]);
+  } catch (error) {
+    errorHandler(error, 'Не удалось напечатать заявку');
+  }
 };
 
 const confirmDelete = (order: IOrderItem) => {
@@ -175,12 +184,12 @@ const onScroll = () => {
   if (!el) return;
   const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 100;
   if (nearBottom && ordersStore.hasMore && !ordersStore.loadingMore) {
-    void ordersStore.loadMore();
+    void ordersStore.loadMore().catch(() => {});
   }
 };
 
 onMounted(() => {
-  void ordersStore.getList();
+  void ordersStore.getList().catch(() => {});
 });
 </script>
 

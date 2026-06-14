@@ -1,32 +1,38 @@
 import { ipcMain } from 'electron';
 import db from '../db/index';
 import type { Order, OrderItem } from '../db/index';
+import { writeErrorLog } from '../logger';
 
 export function registerOrderHandlers() {
   ipcMain.handle('orders:getList', (_event, offset = 0, limit = 50) => {
-    const items = db
-      .prepare(
-        `
-        SELECT
-          o.id,
-          o.organization_name,
-          o.customer_id,
-          o.customer_name,
-          o.created_at,
-          COALESCE(SUM(oi.total), 0) as total_sum
-        FROM orders o
-               LEFT JOIN order_items oi ON oi.order_id = o.id
-        GROUP BY o.id
-        ORDER BY o.created_at DESC
-          LIMIT ? OFFSET ?
-      `,
-      )
-      .all(limit, offset);
+    try {
+      const items = db
+        .prepare(
+          `
+          SELECT
+            o.id,
+            o.organization_name,
+            o.customer_id,
+            o.customer_name,
+            o.created_at,
+            CAST(COALESCE(SUM(oi.total), 0) AS REAL) as total_sum
+          FROM orders o
+                 LEFT JOIN order_items oi ON oi.order_id = o.id
+          GROUP BY o.id
+          ORDER BY o.created_at DESC
+            LIMIT ? OFFSET ?
+        `,
+        )
+        .all(limit, offset);
 
-    const total = (db.prepare('SELECT COUNT(*) as count FROM orders').get() as { count: number })
-      .count;
+      const total = (db.prepare('SELECT COUNT(*) as count FROM orders').get() as { count: number })
+        .count;
 
-    return { items, total };
+      return { items, total };
+    } catch (error) {
+      writeErrorLog('orders:getList failed', { offset, limit, error });
+      throw error;
+    }
   });
 
   ipcMain.handle('orders:getById', (_event, id: number) => {

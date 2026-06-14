@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url'
@@ -8,6 +8,7 @@ import { registerProductHandlers } from './ipc/products';
 import { registerCustomerHandlers } from 'app/src-electron/ipc/customers';
 import { registerPrintHandlers } from 'app/src-electron/ipc/print-window';
 import { initUpdater } from 'app/src-electron/updater';
+import { writeErrorLog } from './logger';
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -60,12 +61,26 @@ async function createWindow() {
     });
   }
 
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 3) {
+      writeErrorLog('Renderer console message', { level, message, line, sourceId });
+    }
+  });
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    writeErrorLog('Renderer process gone', details);
+  });
+
   mainWindow.on('closed', () => {
     mainWindow = undefined;
   });
 }
 
 void app.whenReady().then(() => {
+  ipcMain.on('app:log-error', (_event, message: string, details?: unknown) => {
+    writeErrorLog(message, details);
+  });
+
   runMigrations();
   registerPrintHandlers();
   registerOrderHandlers();
@@ -76,6 +91,14 @@ void app.whenReady().then(() => {
   if (!process.env.DEV) {
     initUpdater();
   }
+});
+
+process.on('uncaughtException', (error) => {
+  writeErrorLog('Main process uncaught exception', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+  writeErrorLog('Main process unhandled rejection', reason);
 });
 app.on('window-all-closed', () => {
   if (platform !== 'darwin') {

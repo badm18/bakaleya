@@ -7,6 +7,9 @@ export {};
 declare global {
   interface Window {
     electronAPI: {
+      log: {
+        error: (message: string, details?: unknown) => void;
+      };
       products: {
         getAll: () => Promise<{
           items: IProductItem[];
