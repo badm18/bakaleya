@@ -80,8 +80,9 @@ export const useOrdersStore = defineStore('orders', {
     async createOrder(order: IOrderPayload, items: IOrderItemPayload[]) {
       try {
         this.saving = true;
-        await window.electronAPI.orders.create({ ...order }, [...items]);
+        const id = await window.electronAPI.orders.create({ ...order }, [...items]);
         Notify.create({ type: 'positive', message: 'Заявка создана', timeout: 1500 });
+        return id;
       } catch (e) {
         errorHandler(e);
         throw e;

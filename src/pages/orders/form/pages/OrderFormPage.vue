@@ -12,7 +12,14 @@
           label="Сохранить"
           class="save-btn"
           :loading="ordersStore.saving"
-          @click="saveOrder"
+          @click="saveOrder()"
+        />
+        <q-btn
+          label="Сохранить и распечатать"
+          icon="print"
+          class="save-print-btn"
+          :loading="ordersStore.saving"
+          @click="saveOrder(true)"
         />
       </div>
     </div>
@@ -201,6 +208,7 @@ import { formatDate } from 'src/utils/formatDate';
 import { useOrdersStore } from 'src/stores/orders-store';
 import type { IOrderItemPayload } from 'src/stores/orders-store';
 import { ORGANIZATIONS } from 'src/const/organizations';
+import { errorHandler } from 'src/utils/errorHandler';
 
 const UNIT_LABELS: Record<string, string> = { kg: 'кг', pcs: 'шт' };
 
@@ -404,7 +412,7 @@ function renumberItems() {
 const formatPrice = (val: number) =>
   val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-async function saveOrder() {
+async function saveOrder(printAfterSave = false) {
   if (!form.value.customer_name) {
     Notify.create({ type: 'warning', message: 'Выберите клиента', timeout: 2000 });
     return;
@@ -425,10 +433,20 @@ async function saveOrder() {
   const itemsPayload = form.value.items.map(({ uid, ...item }) => item);
 
   try {
+    let orderId = Number(route.params.id);
+
     if (isEdit.value) {
       await ordersStore.updateOrder(Number(route.params.id), orderPayload, itemsPayload);
     } else {
-      await ordersStore.createOrder(orderPayload, itemsPayload);
+      orderId = await ordersStore.createOrder(orderPayload, itemsPayload);
+    }
+
+    if (printAfterSave) {
+      try {
+        await window.electronAPI.print.orders([orderId]);
+      } catch (error) {
+        errorHandler(error, 'Не удалось напечатать заявку');
+      }
     }
 
     isDirty.value = false;
@@ -485,6 +503,15 @@ async function saveOrder() {
   font-size: 13px;
   font-weight: 500;
   padding: 6px 20px;
+}
+
+.save-print-btn {
+  background: #eef4ff !important;
+  color: #1d4ed8 !important;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
 }
 
 .order-content {

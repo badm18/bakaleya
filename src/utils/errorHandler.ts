@@ -23,6 +23,6 @@ const notifyError = (message: string) => {
 export const errorHandler = (error: unknown, fallback = 'Произошла ошибка') => {
   console.error(error);
   const message = error instanceof Error ? error.message : fallback;
-  window.electronAPI?.log.error(message, serializeError(error));
+  window.electronAPI?.log?.error(message, serializeError(error));
   notifyError(message);
 }

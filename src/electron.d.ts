@@ -45,7 +45,7 @@ declare global {
           total: number;
         }>;
         getById: (id: number) => Promise<IOrderDetail>;
-        create: (order: unknown, items: unknown) => Promise<unknown>;
+        create: (order: unknown, items: unknown) => Promise<number>;
         update: (id: number, order: unknown, items: unknown) => Promise<unknown>;
         delete: (id: number) => Promise<unknown>;
       };

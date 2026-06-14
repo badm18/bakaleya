@@ -10,7 +10,8 @@
     "lint": "eslint -c ./eslint.config.js \"./src*/**/*.{ts,js,cjs,mjs,vue}\"",
     "format": "prettier --write \"**/*.{js,ts,vue,,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
-    "dev": "quasar dev",
+    "dev": "quasar dev -m electron",
+    "dev:web": "quasar dev",
     "build": "quasar build -m electron",
     "postinstall": "quasar prepare",
     "rebuild": "electron-rebuild -f -w better-sqlite3"
