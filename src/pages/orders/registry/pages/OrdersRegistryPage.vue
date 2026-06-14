@@ -196,11 +196,16 @@ onMounted(() => {
 <style scoped lang="scss">
 .orders-page {
   background: #f7f8fa;
-  min-height: 100vh;
+  height: calc(100vh - 72px);
+  min-height: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .page-toolbar {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px 12px;
@@ -243,15 +248,20 @@ onMounted(() => {
 }
 
 .table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 16px 24px;
   background: #fff;
   border-radius: 12px;
   border: 1px solid #eaecf0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .table-header {
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: 70px 140px 1fr 130px 110px;
   padding: 10px 16px;
   background: #f9fafb;
@@ -264,7 +274,8 @@ onMounted(() => {
 }
 
 .scroll-container {
-  height: calc(100vh - 180px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
 
