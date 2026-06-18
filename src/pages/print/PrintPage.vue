@@ -40,7 +40,9 @@ onMounted(async () => {
 
 const onReady = () => {
   if (!isDev) {
-    setTimeout(() => window.print(), 100);
+    setTimeout(() => {
+      void getElectronAPI().print.trigger();
+    }, 100);
   }
 };
 
