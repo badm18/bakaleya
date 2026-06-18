@@ -109,10 +109,12 @@
                 <input
                   v-model.number="element.price_sell"
                   type="number"
+                  inputmode="decimal"
                   step="0.01"
                   min="0"
                   class="qty-input price-input"
                   @input="recalcTotal(element)"
+                  @blur="normalizeItemNumbers(element)"
                 />
               </div>
               <div class="col-qty">
@@ -120,12 +122,14 @@
                   :ref="(el) => setQtyRef(el, index)"
                   v-model.number="element.quantity"
                   type="number"
+                  inputmode="decimal"
                   :step="element.unit === 'kg' ? '0.001' : '1'"
                   :min="element.unit === 'kg' ? '0.001' : '1'"
                   class="qty-input"
                   @input="recalcTotal(element)"
-                  @keydown.enter="focusProductSearch"
-                  @keydown.tab="focusProductSearch"
+                  @blur="normalizeItemNumbers(element)"
+                  @keydown.enter.prevent="focusProductSearch"
+                  @keydown.tab.prevent="focusProductSearch"
                 />
               </div>
               <div class="col-total">{{ formatPrice(element.total) }} ₽</div>
@@ -209,6 +213,7 @@ import { useOrdersStore } from 'src/stores/orders-store';
 import type { IOrderItemPayload } from 'src/stores/orders-store';
 import { ORGANIZATIONS } from 'src/const/organizations';
 import { errorHandler } from 'src/utils/errorHandler';
+import { getElectronAPI } from 'src/utils/electronApi';
 
 const UNIT_LABELS: Record<string, string> = { kg: 'кг', pcs: 'шт' };
 
@@ -290,13 +295,21 @@ const setQtyRef = (el: unknown, index: number) => {
   if (el) qtyRefs.value[index] = el as HTMLInputElement;
 };
 
-const totalSum = computed(() => form.value.items.reduce((sum, item) => sum + item.total, 0));
+const toFiniteNumber = (value: unknown, fallback = 0) => {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : fallback;
+};
+
+const totalSum = computed(() =>
+  form.value.items.reduce((sum, item) => sum + toFiniteNumber(item.total), 0),
+);
 
 onMounted(async () => {
   try {
+    const electronAPI = getElectronAPI();
     const [customersData, productsData] = await Promise.all([
-      window.electronAPI.customers.getAll(),
-      window.electronAPI.products.getAll(),
+      electronAPI.customers.getAll(),
+      electronAPI.products.getAll(),
     ]);
 
     allCustomers.value = customersData.items;
@@ -397,7 +410,15 @@ function focusProductSearch() {
 }
 
 function recalcTotal(item: OrderItemForm) {
-  item.total = Math.round(item.price_sell * item.quantity * 100) / 100;
+  const price = toFiniteNumber(item.price_sell);
+  const quantity = toFiniteNumber(item.quantity);
+  item.total = Math.round(price * quantity * 100) / 100;
+}
+
+function normalizeItemNumbers(item: OrderItemForm) {
+  item.price_sell = Math.max(0, toFiniteNumber(item.price_sell));
+  item.quantity = Math.max(item.unit === 'kg' ? 0.001 : 1, toFiniteNumber(item.quantity, 1));
+  recalcTotal(item);
 }
 
 function removeItem(index: number) {
@@ -416,7 +437,10 @@ function renumberItems() {
 }
 
 const formatPrice = (val: number) =>
-  val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  toFiniteNumber(val).toLocaleString('ru-RU', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
 async function saveOrder(printAfterSave = false) {
   if (!form.value.customer_name) {
@@ -436,7 +460,13 @@ async function saveOrder(printAfterSave = false) {
 
   // Убираем uid — он только для vue key, в БД не нужен
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const itemsPayload = form.value.items.map(({ uid, ...item }) => item);
+  const itemsPayload = form.value.items.map(({ uid, ...item }, index) => ({
+    ...item,
+    serial_number: index + 1,
+    price_sell: Math.max(0, toFiniteNumber(item.price_sell)),
+    quantity: Math.max(item.unit === 'kg' ? 0.001 : 1, toFiniteNumber(item.quantity, 1)),
+    total: Math.round(toFiniteNumber(item.price_sell) * toFiniteNumber(item.quantity, 1) * 100) / 100,
+  }));
 
   try {
     let orderId = Number(route.params.id);
@@ -449,7 +479,7 @@ async function saveOrder(printAfterSave = false) {
 
     if (printAfterSave) {
       try {
-        await window.electronAPI.print.orders([orderId]);
+        await getElectronAPI().print.orders([orderId]);
       } catch (error) {
         errorHandler(error, 'Не удалось напечатать заявку');
       }

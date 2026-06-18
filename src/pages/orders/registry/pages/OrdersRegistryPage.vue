@@ -137,6 +137,7 @@ import { ref, onMounted } from 'vue';
 import { useOrdersStore } from 'stores/orders-store';
 import type { IOrderItem } from 'stores/interfaces/orders-store.interfaces';
 import { errorHandler } from 'src/utils/errorHandler';
+import { getElectronAPI } from 'src/utils/electronApi';
 
 const router = useRouter();
 const ordersStore = useOrdersStore();
@@ -158,7 +159,7 @@ const openOrder = (id: number) => {
 
 const printOrder = async (id: number) => {
   try {
-    await window.electronAPI.print.orders([id]);
+    await getElectronAPI().print.orders([id]);
   } catch (error) {
     errorHandler(error, 'Не удалось напечатать заявку');
   }

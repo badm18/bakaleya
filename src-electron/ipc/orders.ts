@@ -1,14 +1,12 @@
-import { ipcMain } from 'electron';
 import db from '../db/index';
 import type { Order, OrderItem } from '../db/index';
-import { writeErrorLog } from '../logger';
+import { registerLoggedIpcHandler } from './registerLoggedIpcHandler';
 
 export function registerOrderHandlers() {
-  ipcMain.handle('orders:getList', (_event, offset = 0, limit = 50) => {
-    try {
-      const items = db
-        .prepare(
-          `
+  registerLoggedIpcHandler('orders:getList', (_event, offset = 0, limit = 50) => {
+    const items = db
+      .prepare(
+        `
           SELECT
             o.id,
             o.organization_name,
@@ -22,20 +20,16 @@ export function registerOrderHandlers() {
           ORDER BY o.created_at DESC
             LIMIT ? OFFSET ?
         `,
-        )
-        .all(limit, offset);
+      )
+      .all(limit, offset);
 
-      const total = (db.prepare('SELECT COUNT(*) as count FROM orders').get() as { count: number })
-        .count;
+    const total = (db.prepare('SELECT COUNT(*) as count FROM orders').get() as { count: number })
+      .count;
 
-      return { items, total };
-    } catch (error) {
-      writeErrorLog('orders:getList failed', { offset, limit, error });
-      throw error;
-    }
+    return { items, total };
   });
 
-  ipcMain.handle('orders:getById', (_event, id: number) => {
+  registerLoggedIpcHandler('orders:getById', (_event, id) => {
     const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
     const items = db
       .prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY serial_number ASC')
@@ -43,12 +37,12 @@ export function registerOrderHandlers() {
     return { order, items };
   });
 
-  ipcMain.handle(
+  registerLoggedIpcHandler(
     'orders:create',
     (
       _event,
-      order: Pick<Order, 'organization_name' | 'customer_id' | 'customer_name'>,
-      items: Omit<OrderItem, 'id' | 'order_id'>[],
+      order,
+      items,
     ) => {
       const insertOrder = db.prepare(`
         INSERT INTO orders (organization_name, customer_id, customer_name)
@@ -60,8 +54,10 @@ export function registerOrderHandlers() {
       `);
 
       const transaction = db.transaction(() => {
-        const { lastInsertRowid } = insertOrder.run(order);
-        for (const item of items) {
+        const { lastInsertRowid } = insertOrder.run(
+          order as Pick<Order, 'organization_name' | 'customer_id' | 'customer_name'>,
+        );
+        for (const item of items as Omit<OrderItem, 'id' | 'order_id'>[]) {
           insertItem.run({ ...item, order_id: lastInsertRowid });
         }
         return Number(lastInsertRowid);
@@ -71,13 +67,13 @@ export function registerOrderHandlers() {
     },
   );
 
-  ipcMain.handle(
+  registerLoggedIpcHandler(
     'orders:update',
     (
       _event,
-      orderId: number,
-      order: Pick<Order, 'organization_name' | 'customer_id' | 'customer_name'>,
-      items: Omit<OrderItem, 'id' | 'order_id'>[],
+      orderId,
+      order,
+      items,
     ) => {
       const updateOrder = db.prepare(`
         UPDATE orders
@@ -91,9 +87,12 @@ export function registerOrderHandlers() {
       `);
 
       const transaction = db.transaction(() => {
-        updateOrder.run({ ...order, id: orderId });
+        updateOrder.run({
+          ...(order as Pick<Order, 'organization_name' | 'customer_id' | 'customer_name'>),
+          id: orderId,
+        });
         deleteItems.run(orderId);
-        for (const item of items) {
+        for (const item of items as Omit<OrderItem, 'id' | 'order_id'>[]) {
           insertItem.run({ ...item, order_id: orderId });
         }
       });
@@ -102,7 +101,7 @@ export function registerOrderHandlers() {
     },
   );
 
-  ipcMain.handle('orders:delete', (_event, id: number) =>
+  registerLoggedIpcHandler('orders:delete', (_event, id) =>
     db.prepare('DELETE FROM orders WHERE id = ?').run(id),
   );
 }

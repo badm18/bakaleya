@@ -18,6 +18,8 @@ import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import PrintTwoUp from 'src/components/print/PrintTwoUp.vue';
 import type { IOrderData } from 'stores/interfaces/orders-store.interfaces';
+import { errorHandler } from 'src/utils/errorHandler';
+import { getElectronAPI } from 'src/utils/electronApi';
 
 const isDev = import.meta.env.DEV;
 const route = useRoute();
@@ -28,7 +30,9 @@ onMounted(async () => {
   try {
     const idsParam = route.query.ids as string;
     const ids: number[] = JSON.parse(decodeURIComponent(idsParam));
-    ordersData.value = await window.electronAPI.print.getOrdersData(ids);
+    ordersData.value = await getElectronAPI().print.getOrdersData(ids);
+  } catch (error) {
+    errorHandler(error, 'Не удалось загрузить данные для печати');
   } finally {
     loading.value = false;
   }
@@ -41,7 +45,7 @@ const onReady = () => {
 };
 
 const triggerPrint = () => {
-  void window.electronAPI.print.trigger();
+  void getElectronAPI().print.trigger();
 };
 </script>
 

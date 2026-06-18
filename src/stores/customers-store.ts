@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import type { ICustomerItem } from 'stores/interfaces/customers-store.interfaces';
 import { Notify } from 'quasar';
 import { errorHandler } from 'src/utils/errorHandler';
+import { getElectronAPI } from 'src/utils/electronApi';
 
 export const useCustomersStore = defineStore('customers', {
   state: () => ({
@@ -15,7 +16,7 @@ export const useCustomersStore = defineStore('customers', {
     async getList() {
       try {
         this.loading = true;
-        const data = await window.electronAPI.customers.getAll();
+        const data = await getElectronAPI().customers.getAll();
         this.items = data.items;
         this.totalCount = data.total;
       } catch (e) {
@@ -29,7 +30,7 @@ export const useCustomersStore = defineStore('customers', {
     async search(name: string) {
       try {
         this.loading = true;
-        const data = await window.electronAPI.customers.search(name);
+        const data = await getElectronAPI().customers.search(name);
         this.items = data.items;
         this.totalCount = data.total;
       } catch (e) {
@@ -48,7 +49,7 @@ export const useCustomersStore = defineStore('customers', {
 
       try {
         this.upsertLoading = true;
-        await window.electronAPI.customers.create({ name: name.trim() });
+        await getElectronAPI().customers.create({ name: name.trim() });
         void this.getList();
         Notify.create({
           type: 'positive',
@@ -71,7 +72,7 @@ export const useCustomersStore = defineStore('customers', {
 
       try {
         this.upsertLoading = true;
-        await window.electronAPI.customers.update(id, {
+        await getElectronAPI().customers.update(id, {
           name: name.trim(),
         });
 
@@ -104,7 +105,7 @@ export const useCustomersStore = defineStore('customers', {
       }
       this.upsertLoading = true;
       try {
-        await window.electronAPI.customers.delete(customerId);
+        await getElectronAPI().customers.delete(customerId);
         this.items = this.items.filter((item) => item.id !== customerId);
         this.totalCount -= 1;
         Notify.create({ type: 'positive', message: 'Клиент удалён', timeout: 1500 });

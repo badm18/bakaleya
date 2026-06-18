@@ -7,6 +7,7 @@ import type {
   IOrderItem,
   IOrderPayload,
 } from 'stores/interfaces/orders-store.interfaces';
+import { getElectronAPI } from 'src/utils/electronApi';
 
 
 export type IOrderItemPayload = Omit<IDetailItem, 'id' | 'order_id'>;
@@ -38,7 +39,7 @@ export const useOrdersStore = defineStore('orders', {
     async getList() {
       try {
         this.loading = true;
-        const data = await window.electronAPI.orders.getList(0, LIMIT);
+        const data = await getElectronAPI().orders.getList(0, LIMIT);
         this.items = data.items.map(normalizeOrderItem);
         this.totalCount = data.total;
       } catch (e) {
@@ -53,7 +54,7 @@ export const useOrdersStore = defineStore('orders', {
       if (this.loadingMore || !this.hasMore) return;
       try {
         this.loadingMore = true;
-        const data = await window.electronAPI.orders.getList(this.items.length, LIMIT);
+        const data = await getElectronAPI().orders.getList(this.items.length, LIMIT);
         this.items.push(...data.items.map(normalizeOrderItem));
       } catch (e) {
         errorHandler(e);
@@ -67,7 +68,7 @@ export const useOrdersStore = defineStore('orders', {
       try {
         this.currentOrderLoading = true;
 
-        this.currentOrder = await window.electronAPI.orders.getById(id);
+        this.currentOrder = await getElectronAPI().orders.getById(id);
       } catch (e) {
         errorHandler(e);
         throw e;
@@ -80,7 +81,7 @@ export const useOrdersStore = defineStore('orders', {
     async createOrder(order: IOrderPayload, items: IOrderItemPayload[]) {
       try {
         this.saving = true;
-        const id = await window.electronAPI.orders.create({ ...order }, [...items]);
+        const id = await getElectronAPI().orders.create({ ...order }, [...items]);
         Notify.create({ type: 'positive', message: 'Заявка создана', timeout: 1500 });
         return id;
       } catch (e) {
@@ -95,7 +96,7 @@ export const useOrdersStore = defineStore('orders', {
     async updateOrder(id: number, order: IOrderPayload, items: IOrderItemPayload[]) {
       try {
         this.saving = true;
-        await window.electronAPI.orders.update(id, { ...order }, [...items]);
+        await getElectronAPI().orders.update(id, { ...order }, [...items]);
         Notify.create({ type: 'positive', message: 'Заявка обновлена', timeout: 1500 });
       } catch (e) {
         errorHandler(e);
@@ -109,7 +110,7 @@ export const useOrdersStore = defineStore('orders', {
     async deleteOrder(id: number) {
       try {
         this.saving = true;
-        await window.electronAPI.orders.delete(id);
+        await getElectronAPI().orders.delete(id);
         this.items = this.items.filter((item) => item.id !== id);
         this.totalCount -= 1;
         Notify.create({ type: 'positive', message: 'Заявка удалена', timeout: 1500 });

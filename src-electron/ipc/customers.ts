@@ -1,9 +1,9 @@
-import { ipcMain } from 'electron';
 import db from '../db/index';
 import type { Customer } from '../db/index';
+import { registerLoggedIpcHandler } from './registerLoggedIpcHandler';
 
 export function registerCustomerHandlers() {
-  ipcMain.handle('customers:getAll', () => {
+  registerLoggedIpcHandler('customers:getAll', () => {
     const items = db
       .prepare(
         `
@@ -24,7 +24,11 @@ export function registerCustomerHandlers() {
     return { items, total };
   });
 
-  ipcMain.handle('customers:search', (_event, name: string) => {
+  registerLoggedIpcHandler('customers:search', (_event, name) => {
+    if (typeof name !== 'string') {
+      throw new Error('customers:search expects string query');
+    }
+
     const query = `%${name.toLowerCase()}%`;
 
     const items = db
@@ -53,19 +57,26 @@ export function registerCustomerHandlers() {
     return { items, total };
   });
 
-  ipcMain.handle('customers:create', (_event, data: Pick<Customer, 'name'>) =>
+  registerLoggedIpcHandler('customers:create', (_event, data) =>
     db
       .prepare('INSERT INTO customers (name, name_lower) VALUES (@name, @name_lower)')
-      .run({ name: data.name, name_lower: data.name.toLowerCase() }),
+      .run({
+        name: (data as Pick<Customer, 'name'>).name,
+        name_lower: (data as Pick<Customer, 'name'>).name.toLowerCase(),
+      }),
   );
 
-  ipcMain.handle('customers:update', (_event, id: number, data: Pick<Customer, 'name'>) =>
+  registerLoggedIpcHandler('customers:update', (_event, id, data) =>
     db
       .prepare('UPDATE customers SET name=@name, name_lower=@name_lower WHERE id=@id')
-      .run({ name: data.name, name_lower: data.name.toLowerCase(), id }),
+      .run({
+        name: (data as Pick<Customer, 'name'>).name,
+        name_lower: (data as Pick<Customer, 'name'>).name.toLowerCase(),
+        id,
+      }),
   );
 
-  ipcMain.handle('customers:delete', (_event, id: number) =>
+  registerLoggedIpcHandler('customers:delete', (_event, id) =>
     db.prepare('UPDATE customers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?').run(id),
   );
 }

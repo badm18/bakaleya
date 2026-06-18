@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { Notify } from 'quasar';
 import { errorHandler } from 'src/utils/errorHandler';
+import { getElectronAPI } from 'src/utils/electronApi';
 import type { IProductItem } from 'stores/interfaces/products-store.interfaces';
 
 export type IProductCreate = Omit<IProductItem, 'id' | 'created_at'>;
@@ -17,7 +18,7 @@ export const useProductsStore = defineStore('products', {
     async getList() {
       try {
         this.loading = true;
-        const data = await window.electronAPI.products.getAll();
+        const data = await getElectronAPI().products.getAll();
         this.items = data.items;
         this.totalCount = data.total;
       } catch (e) {
@@ -31,7 +32,7 @@ export const useProductsStore = defineStore('products', {
     async search(name: string) {
       try {
         this.loading = true;
-        const data = await window.electronAPI.products.search(name);
+        const data = await getElectronAPI().products.search(name);
         this.items = data.items;
         this.totalCount = data.total;
       } catch (e) {
@@ -49,7 +50,7 @@ export const useProductsStore = defineStore('products', {
 
       try {
         this.upsertLoading = true;
-        await window.electronAPI.products.create({ ...payload });
+        await getElectronAPI().products.create({ ...payload });
         void this.getList();
         Notify.create({ type: 'positive', message: 'Товар добавлен', timeout: 1500 });
       } catch (e) {
@@ -63,7 +64,7 @@ export const useProductsStore = defineStore('products', {
     async updateProduct(id: number, payload: IProductCreate) {
       try {
         this.upsertLoading = true;
-        await window.electronAPI.products.update(id, { ...payload });
+        await getElectronAPI().products.update(id, { ...payload });
 
         // Обновляем локально без перезапроса
         this.items = this.items.map((item) => (item.id === id ? { ...item, ...payload } : item));
@@ -81,7 +82,7 @@ export const useProductsStore = defineStore('products', {
       if (!id) return;
       try {
         this.upsertLoading = true;
-        await window.electronAPI.products.delete(id);
+        await getElectronAPI().products.delete(id);
         this.items = this.items.filter((item) => item.id !== id);
         this.totalCount -= 1;
         Notify.create({ type: 'positive', message: 'Товар удалён', timeout: 1500 });

@@ -67,6 +67,22 @@ async function createWindow() {
     }
   });
 
+  mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
+    writeErrorLog('Preload script failed', { preloadPath, error });
+  });
+
+  mainWindow.webContents.on(
+    'did-fail-load',
+    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+      writeErrorLog('Renderer load failed', {
+        errorCode,
+        errorDescription,
+        validatedURL,
+        isMainFrame,
+      });
+    },
+  );
+
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
     writeErrorLog('Renderer process gone', details);
   });

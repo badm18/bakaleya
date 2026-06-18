@@ -1,9 +1,9 @@
-import { ipcMain } from 'electron';
 import db from '../db/index';
 import type { Product } from '../db/index';
+import { registerLoggedIpcHandler } from './registerLoggedIpcHandler';
 
 export function registerProductHandlers() {
-  ipcMain.handle('products:getAll', () => {
+  registerLoggedIpcHandler('products:getAll', () => {
     const items = db
       .prepare(
         `
@@ -24,7 +24,11 @@ export function registerProductHandlers() {
     return { items, total };
   });
 
-  ipcMain.handle('products:search', (_event, name: string) => {
+  registerLoggedIpcHandler('products:search', (_event, name) => {
+    if (typeof name !== 'string') {
+      throw new Error('products:search expects string query');
+    }
+
     const query = `%${name.toLowerCase()}%`;
 
     const items = db
@@ -53,9 +57,9 @@ export function registerProductHandlers() {
     return { items, total };
   });
 
-  ipcMain.handle(
+  registerLoggedIpcHandler(
     'products:create',
-    (_event, data: Omit<Product, 'id' | 'created_at' | 'deleted_at' | 'name_lower'>) =>
+    (_event, data) =>
       db
         .prepare(
           `
@@ -63,12 +67,15 @@ export function registerProductHandlers() {
           VALUES (@name, @name_lower, @unit, @price_buy, @price_sell, @kg_per_pcs)
         `,
         )
-        .run({ ...data, name_lower: data.name.toLowerCase() }),
+        .run({
+          ...(data as Omit<Product, 'id' | 'created_at' | 'deleted_at' | 'name_lower'>),
+          name_lower: (data as Product).name.toLowerCase(),
+        }),
   );
 
-  ipcMain.handle(
+  registerLoggedIpcHandler(
     'products:update',
-    (_event, id: number, data: Omit<Product, 'id' | 'created_at' | 'deleted_at' | 'name_lower'>) =>
+    (_event, id, data) =>
       db
         .prepare(
           `
@@ -78,10 +85,14 @@ export function registerProductHandlers() {
           WHERE id=@id
         `,
         )
-        .run({ ...data, name_lower: data.name.toLowerCase(), id }),
+        .run({
+          ...(data as Omit<Product, 'id' | 'created_at' | 'deleted_at' | 'name_lower'>),
+          name_lower: (data as Product).name.toLowerCase(),
+          id,
+        }),
   );
 
-  ipcMain.handle('products:delete', (_event, id: number) =>
+  registerLoggedIpcHandler('products:delete', (_event, id) =>
     db.prepare('UPDATE products SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?').run(id),
   );
 }

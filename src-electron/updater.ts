@@ -36,7 +36,6 @@ export function initUpdater() {
   });
 
   autoUpdater.on('error', (err) => {
-    console.error('Updater error:', err);
     writeErrorLog('Updater error', err);
   });
 
