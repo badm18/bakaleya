@@ -9,6 +9,7 @@ declare global {
     electronAPI: {
       log: {
         error: (message: string, details?: unknown) => void;
+        test: (message?: string) => Promise<string>;
       };
       products: {
         getAll: () => Promise<{

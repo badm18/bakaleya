@@ -8,7 +8,8 @@ import { registerProductHandlers } from './ipc/products';
 import { registerCustomerHandlers } from 'app/src-electron/ipc/customers';
 import { registerPrintHandlers } from 'app/src-electron/ipc/print-window';
 import { initUpdater } from 'app/src-electron/updater';
-import { writeErrorLog } from './logger';
+import { getErrorLogPath, writeErrorLog } from './logger';
+import { attachWindowErrorLogging } from './window-error-logging';
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
@@ -16,6 +17,12 @@ const platform = process.platform || os.platform();
 const currentDir = fileURLToPath(new URL('.', import.meta.url));
 
 let mainWindow: BrowserWindow | undefined;
+
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+
+if (!gotSingleInstanceLock) {
+  app.quit();
+}
 
 async function createWindow() {
   /**
@@ -61,40 +68,44 @@ async function createWindow() {
     });
   }
 
-  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    if (level >= 3) {
-      writeErrorLog('Renderer console message', { level, message, line, sourceId });
-    }
-  });
-
-  mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
-    writeErrorLog('Preload script failed', { preloadPath, error });
-  });
-
-  mainWindow.webContents.on(
-    'did-fail-load',
-    (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-      writeErrorLog('Renderer load failed', {
-        errorCode,
-        errorDescription,
-        validatedURL,
-        isMainFrame,
-      });
-    },
-  );
-
-  mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    writeErrorLog('Renderer process gone', details);
-  });
+  attachWindowErrorLogging(mainWindow, 'Main window');
 
   mainWindow.on('closed', () => {
     mainWindow = undefined;
   });
 }
 
+if (gotSingleInstanceLock) {
+  app.on('second-instance', () => {
+    if (!mainWindow) {
+      void createWindow();
+      return;
+    }
+
+    if (mainWindow.isMinimized()) {
+      mainWindow.restore();
+    }
+
+    mainWindow.focus();
+  });
+}
+
 void app.whenReady().then(() => {
+  if (!gotSingleInstanceLock) {
+    return;
+  }
+
   ipcMain.on('app:log-error', (_event, message: string, details?: unknown) => {
     writeErrorLog(message, details);
+  });
+
+  ipcMain.handle('app:test-log', (_event, message = 'TEST_LOG_WRITE') => {
+    writeErrorLog(message, {
+      source: 'app:test-log',
+      trace: new Error('Test log trace').stack,
+    });
+
+    return getErrorLogPath();
   });
 
   runMigrations();

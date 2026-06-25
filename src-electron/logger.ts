@@ -41,30 +41,19 @@ const serialize = (value: unknown): string => {
   }
 };
 
-const isExpectedOfflineNoise = (text: string) =>
-  [
-    'ERR_INTERNET_DISCONNECTED',
-    'ERR_NETWORK_CHANGED',
-    'ERR_NAME_NOT_RESOLVED',
-    'net::ERR_INTERNET_DISCONNECTED',
-    'net::ERR_NETWORK_CHANGED',
-    'net::ERR_NAME_NOT_RESOLVED',
-  ].some((pattern) => text.includes(pattern));
+export const getErrorLogPath = () => path.join(app.getPath('userData'), 'logs', 'app.log');
 
 export const writeErrorLog = (message: string, details?: unknown) => {
   try {
     const detailsText = details === undefined ? '' : ` ${serialize(details)}`;
 
-    if (isExpectedOfflineNoise(`${message}${detailsText}`)) {
-      return;
-    }
-
-    const logDir = path.join(app.getPath('userData'), 'logs');
+    const logPath = getErrorLogPath();
+    const logDir = path.dirname(logPath);
     fs.mkdirSync(logDir, { recursive: true });
 
     const line = `[${new Date().toISOString()}] [ERROR] ${message}${detailsText}\n`;
 
-    fs.appendFileSync(path.join(logDir, 'app.log'), line, 'utf8');
+    fs.appendFileSync(logPath, line, 'utf8');
   } catch {
     // Logging must never break the app flow.
   }

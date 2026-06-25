@@ -3,11 +3,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import db from '../db/index';
 import { writeErrorLog } from '../logger';
+import { attachWindowErrorLogging } from '../window-error-logging';
 import { registerLoggedIpcHandler } from './registerLoggedIpcHandler';
 
 const currentDir = fileURLToPath(new URL('.', import.meta.url));
 const isDev = process.env.DEV === 'true';
 let activePrintWindow: BrowserWindow | null = null;
+let printQueue = Promise.resolve();
 
 const parseOrderIds = (ids: unknown): number[] => {
   if (!Array.isArray(ids) || !ids.every((id) => Number.isInteger(id))) {
@@ -15,6 +17,22 @@ const parseOrderIds = (ids: unknown): number[] => {
   }
 
   return ids;
+};
+
+const focusVisibleAppWindow = (closedWindow: BrowserWindow) => {
+  const visibleWindow = BrowserWindow.getAllWindows().find(
+    (win) => win !== closedWindow && !win.isDestroyed() && win.isVisible(),
+  );
+
+  if (!visibleWindow) {
+    return;
+  }
+
+  if (visibleWindow.isMinimized()) {
+    visibleWindow.restore();
+  }
+
+  visibleWindow.focus();
 };
 
 export function registerPrintHandlers() {
@@ -37,68 +55,13 @@ export function registerPrintHandlers() {
   });
 
   // Открытие окна печати
-  registerLoggedIpcHandler('print:orders', (_event, ids) => {
+  registerLoggedIpcHandler('print:orders', async (_event, ids) => {
     const orderIds = parseOrderIds(ids);
 
-    if (activePrintWindow && !activePrintWindow.isDestroyed()) {
-      activePrintWindow.close();
-    }
+    const printJob = printQueue.then(() => openPrintWindow(orderIds));
+    printQueue = printJob.catch(() => undefined);
 
-    const printWin = new BrowserWindow({
-      show: isDev,
-      width: isDev ? 900 : 0,
-      height: isDev ? 800 : 0,
-      skipTaskbar: !isDev,
-      autoHideMenuBar: true,
-      webPreferences: {
-        contextIsolation: true,
-        preload: path.resolve(
-          currentDir,
-          path.join(
-            process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
-            'electron-preload' + process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION,
-          ),
-        ),
-      },
-    });
-    activePrintWindow = printWin;
-
-    printWin.on('closed', () => {
-      if (activePrintWindow === printWin) {
-        activePrintWindow = null;
-      }
-    });
-
-    printWin.webContents.on('preload-error', (_event, preloadPath, error) => {
-      writeErrorLog('Print preload script failed', { preloadPath, error });
-    });
-
-    printWin.webContents.on(
-      'did-fail-load',
-      (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
-        writeErrorLog('Print window load failed', {
-          errorCode,
-          errorDescription,
-          validatedURL,
-          isMainFrame,
-        });
-      },
-    );
-
-    printWin.webContents.on('render-process-gone', (_event, details) => {
-      writeErrorLog('Print renderer process gone', details);
-      if (!printWin.isDestroyed()) {
-        printWin.close();
-      }
-    });
-
-    const idsParam = encodeURIComponent(JSON.stringify(orderIds));
-
-    if (isDev) {
-      void printWin.loadURL(`${process.env.APP_URL}#/print?ids=${idsParam}`);
-    } else {
-      void printWin.loadFile('index.html', { hash: `/print?ids=${idsParam}` });
-    }
+    await printJob;
   });
 
   registerLoggedIpcHandler('print:trigger', (event) => {
@@ -115,3 +78,100 @@ export function registerPrintHandlers() {
     });
   });
 }
+
+const openPrintWindow = (orderIds: number[]) =>
+  new Promise<void>((resolve, reject) => {
+    let isSettled = false;
+    let loadFailed = false;
+    let timeout: NodeJS.Timeout | null = null;
+
+    const settle = (error?: Error) => {
+      if (isSettled) {
+        return;
+      }
+
+      isSettled = true;
+
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    };
+
+    const printWin = new BrowserWindow({
+      show: isDev,
+      width: 900,
+      height: 800,
+      focusable: isDev,
+      skipTaskbar: !isDev,
+      autoHideMenuBar: true,
+      webPreferences: {
+        contextIsolation: true,
+        preload: path.resolve(
+          currentDir,
+          path.join(
+            process.env.QUASAR_ELECTRON_PRELOAD_FOLDER,
+            'electron-preload' + process.env.QUASAR_ELECTRON_PRELOAD_EXTENSION,
+          ),
+        ),
+      },
+    });
+    activePrintWindow = printWin;
+    attachWindowErrorLogging(printWin, 'Print window');
+
+    timeout = setTimeout(() => {
+      writeErrorLog('Print window timed out', { orderIds });
+
+      if (!printWin.isDestroyed()) {
+        printWin.close();
+      }
+
+      settle(new Error('Печать не завершилась за отведенное время'));
+    }, 30000);
+
+    printWin.on('closed', () => {
+      if (activePrintWindow === printWin) {
+        activePrintWindow = null;
+      }
+
+      focusVisibleAppWindow(printWin);
+
+      if (loadFailed) {
+        settle(new Error('Не удалось открыть окно печати'));
+        return;
+      }
+
+      settle();
+    });
+
+    printWin.webContents.on('preload-error', () => {
+      loadFailed = true;
+    });
+
+    printWin.webContents.on(
+      'did-fail-load',
+      () => {
+        loadFailed = true;
+      },
+    );
+
+    printWin.webContents.on('render-process-gone', () => {
+      loadFailed = true;
+      if (!printWin.isDestroyed()) {
+        printWin.close();
+      }
+    });
+
+    const idsParam = encodeURIComponent(JSON.stringify(orderIds));
+
+    if (isDev) {
+      void printWin.loadURL(`${process.env.APP_URL}#/print?ids=${idsParam}`);
+    } else {
+      void printWin.loadFile('index.html', { hash: `/print?ids=${idsParam}` });
+    }
+  });

@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld('electronAPI', {
   log: {
     error: (message: string, details?: unknown) => ipcRenderer.send('app:log-error', message, details),
+    test: (message = 'TEST_LOG_WRITE') => ipcRenderer.invoke('app:test-log', message),
   },
 
   // Номенклатура

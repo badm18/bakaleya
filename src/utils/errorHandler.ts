@@ -26,7 +26,7 @@ const notifyError = (message: string) => {
     message,
     timeout: 5000,
   });
-}
+};
 
 let lastNotification = '';
 let lastNotificationAt = 0;
@@ -36,16 +36,29 @@ export const errorHandler = (
   fallback = 'Произошла ошибка',
   context?: Record<string, unknown>,
 ) => {
-  const message = error instanceof Error ? error.message : fallback;
+  const message =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : fallback;
   const details = {
     error: serializeError(error),
     context,
     url: window.location.href,
     trace: new Error('Renderer error trace').stack,
+    preloadBridgeAvailable: Boolean(window.electronAPI?.log?.error),
   };
 
-  console.error(`[renderer-error] ${message} ${stringifyForConsole(details)}`);
-  window.electronAPI?.log?.error(message, details);
+  console.error(`[renderer-error] ${stringifyForConsole({ message, ...details })}`);
+
+  try {
+    window.electronAPI?.log?.error(message, details);
+  } catch (logError) {
+    console.error(
+      `[renderer-error-log-failed] ${stringifyForConsole({
+        message,
+        logError: serializeError(logError),
+        trace: new Error('Renderer log failure trace').stack,
+      })}`,
+    );
+  }
 
   const now = Date.now();
   if (message !== lastNotification || now - lastNotificationAt > 2000) {
@@ -53,4 +66,4 @@ export const errorHandler = (
     lastNotificationAt = now;
     notifyError(message);
   }
-}
+};
