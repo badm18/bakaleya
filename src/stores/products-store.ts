@@ -4,7 +4,8 @@ import { errorHandler } from 'src/utils/errorHandler';
 import { getElectronAPI } from 'src/utils/electronApi';
 import type { IProductItem } from 'stores/interfaces/products-store.interfaces';
 
-export type IProductCreate = Omit<IProductItem, 'id' | 'created_at'>;
+export type IProductCreate = Omit<IProductItem, 'id' | 'created_at' | 'main_category_name'>;
+export type IProductUpdate = IProductCreate & Partial<Pick<IProductItem, 'main_category_name'>>;
 
 export const useProductsStore = defineStore('products', {
   state: () => ({
@@ -61,7 +62,7 @@ export const useProductsStore = defineStore('products', {
       }
     },
 
-    async updateProduct(id: number, payload: IProductCreate) {
+    async updateProduct(id: number, payload: IProductUpdate) {
       try {
         this.upsertLoading = true;
         await getElectronAPI().products.update(id, { ...payload });

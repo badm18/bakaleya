@@ -24,6 +24,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     delete: (id: number) => ipcRenderer.invoke('customers:delete', id),
   },
 
+  // Категории
+  categories: {
+    getAll: () => ipcRenderer.invoke('categories:getAll'),
+    create: (data: unknown) => ipcRenderer.invoke('categories:create', data),
+    update: (id: number, data: unknown) => ipcRenderer.invoke('categories:update', id, data),
+    delete: (id: number) => ipcRenderer.invoke('categories:delete', id),
+  },
+
   // Заявки
   orders: {
     getList: (page: number, limit: number) => ipcRenderer.invoke('orders:getList', page, limit),
@@ -32,6 +40,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     update: (id: number, order: unknown, items: unknown) =>
       ipcRenderer.invoke('orders:update', id, order, items),
     delete: (id: number) => ipcRenderer.invoke('orders:delete', id),
+  },
+  // Отчеты
+  reports: {
+    getRevenueByCategory: (period: { date_from: string; date_to: string }) =>
+      ipcRenderer.invoke('reports:getRevenueByCategory', period),
   },
   // Печать
   print: {

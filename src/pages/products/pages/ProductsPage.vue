@@ -42,6 +42,14 @@
         <q-btn
           flat
           dense
+          icon="category"
+          label="Категории"
+          class="secondary-btn"
+          @click="openCategoriesDialog"
+        />
+        <q-btn
+          flat
+          dense
           icon="add"
           label="Добавить"
           class="add-btn"
@@ -54,6 +62,7 @@
     <div class="table-wrap">
       <div class="table-header">
         <div class="col-name">Название</div>
+        <div class="col-category">Главная категория</div>
         <div class="col-unit">Ед. изм.</div>
         <div class="col-price">Цена закупки</div>
         <div class="col-price">Цена продажи</div>
@@ -85,6 +94,35 @@
                 />
               </template>
               <template v-else>{{ item.name }}</template>
+            </span>
+          </div>
+
+          <!-- Категория -->
+          <div class="col-category">
+            <span
+              class="editable-cell"
+              @click="startEdit(item.id, 'main_category_id', item.main_category_id ?? '')"
+            >
+              <template v-if="editingCell?.id === item.id && editingCell?.field === 'main_category_id'">
+                <select
+                  ref="editInputRef"
+                  v-model="editingCell.value"
+                  class="inline-select"
+                  @change="saveEdit(item)"
+                  @keydown.escape="cancelEdit"
+                >
+                  <option value="">Без категории</option>
+                  <option v-for="category in categories" :key="category.id" :value="category.id">
+                    {{ category.name }}
+                  </option>
+                </select>
+              </template>
+              <template v-else>
+                <span v-if="item.main_category_name" class="category-value">{{
+                  item.main_category_name
+                }}</span>
+                <span v-else class="empty-value">—</span>
+              </template>
             </span>
           </div>
 
@@ -236,6 +274,16 @@
           />
 
           <q-select
+            v-model="form.main_category_id"
+            :options="categoryOptions"
+            emit-value
+            map-options
+            clearable
+            label="Главная категория"
+            class="dialog-input"
+          />
+
+          <q-select
             v-model="form.unit"
             :options="unitOptions"
             emit-value
@@ -289,6 +337,80 @@
       </q-card>
     </q-dialog>
 
+    <!-- Categories Dialog -->
+    <q-dialog v-model="categoriesDialogOpen">
+      <q-card class="dialog-card categories-dialog">
+        <q-card-section class="dialog-header">
+          <div class="dialog-title">Категории</div>
+          <q-btn flat dense round icon="close" @click="categoriesDialogOpen = false" />
+        </q-card-section>
+
+        <q-card-section class="dialog-body">
+          <div class="category-create-row">
+            <q-input
+              v-model="newCategoryName"
+              dense
+              outlined
+              label="Новая категория"
+              class="category-input"
+              @keydown.enter="createCategory"
+            />
+            <q-btn
+              flat
+              dense
+              icon="add"
+              label="Добавить"
+              class="add-btn"
+              :loading="categoriesLoading"
+              @click="createCategory"
+            />
+          </div>
+
+          <div class="categories-list">
+            <div v-for="category in categories" :key="category.id" class="category-row">
+              <template v-if="editingCategory?.id === category.id">
+                <input
+                  ref="categoryEditInputRef"
+                  v-model="editingCategory.name"
+                  class="inline-input"
+                  @blur="saveCategoryEdit"
+                  @keydown.enter="saveCategoryEdit"
+                  @keydown.escape="cancelCategoryEdit"
+                />
+              </template>
+              <template v-else>
+                <span class="category-name">{{ category.name }}</span>
+              </template>
+              <div class="category-actions">
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="edit"
+                  size="sm"
+                  class="edit-btn"
+                  @click="startCategoryEdit(category)"
+                />
+                <q-btn
+                  flat
+                  dense
+                  round
+                  icon="delete"
+                  size="sm"
+                  class="delete-btn"
+                  @click="deleteCategory(category)"
+                />
+              </div>
+            </div>
+
+            <div v-if="!categories.length" class="empty-categories">
+              Категорий пока нет
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
     <!-- Delete Confirm Dialog -->
     <q-dialog v-model="deleteDialogOpen">
       <q-card class="dialog-card">
@@ -314,8 +436,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { useProductsStore } from 'stores/products-store';
+import { getElectronAPI } from 'src/utils/electronApi';
+import { errorHandler } from 'src/utils/errorHandler';
+import type { ICategoryItem } from 'src/stores/interfaces/categories-store.interfaces';
 
 const UNIT_LABELS: Record<string, string> = {
   kg: 'кг',
@@ -331,6 +456,8 @@ interface ProductItem {
   id: number;
   name: string;
   unit: 'kg' | 'pcs';
+  main_category_id: number | null;
+  main_category_name: string | null;
   price_buy: number | null;
   price_sell: number | null;
   kg_per_pcs: number | null;
@@ -352,19 +479,40 @@ const editInputRef = ref();
 
 const dialogOpen = ref(false);
 const deleteDialogOpen = ref(false);
+const categoriesDialogOpen = ref(false);
 const deletingProduct = ref<ProductItem | null>(null);
 const editingCell = ref<EditingCell | null>(null);
+const categories = ref<ICategoryItem[]>([]);
+const categoriesLoading = ref(false);
+const newCategoryName = ref('');
+const editingCategory = ref<{ id: number; name: string } | null>(null);
+const categoryEditInputRef = ref();
 
 const form = ref({
   name: '',
   unit: 'kg' as 'kg' | 'pcs',
+  main_category_id: null as number | null,
   price_buy: null as number | null,
   price_sell: null as number | null,
   kg_per_pcs: null as number | null,
 });
 
+const categoryOptions = computed(() =>
+  categories.value.map((category) => ({
+    label: category.name,
+    value: category.id,
+  })),
+);
+
 const openCreateDialog = () => {
-  form.value = { name: '', unit: 'kg', price_buy: null, price_sell: null, kg_per_pcs: null };
+  form.value = {
+    name: '',
+    unit: 'kg',
+    main_category_id: null,
+    price_buy: null,
+    price_sell: null,
+    kg_per_pcs: null,
+  };
   dialogOpen.value = true;
 };
 
@@ -392,7 +540,18 @@ const saveEdit = async (item: ProductItem) => {
   if (!editingCell.value) return;
 
   const { field, value } = editingCell.value;
-  const updated = { ...item, [field]: value === '' ? null : value };
+  const normalizedValue = field === 'main_category_id' && value !== '' ? Number(value) : value;
+  const selectedCategory =
+    field === 'main_category_id'
+      ? categories.value.find((category) => category.id === normalizedValue)
+      : null;
+  const updated = {
+    ...item,
+    [field]: normalizedValue === '' ? null : normalizedValue,
+    ...(field === 'main_category_id'
+      ? { main_category_name: selectedCategory?.name ?? null }
+      : {}),
+  };
 
   // Если сменили единицу на kg — сбрасываем kg_per_pcs
   if (field === 'unit' && value === 'kg') {
@@ -427,6 +586,80 @@ const clearSearch = () => {
   void productsStore.getList();
 };
 
+const loadCategories = async () => {
+  try {
+    categoriesLoading.value = true;
+    const data = await getElectronAPI().categories.getAll();
+    categories.value = data.items;
+  } catch (error) {
+    errorHandler(error, 'Не удалось загрузить категории');
+  } finally {
+    categoriesLoading.value = false;
+  }
+};
+
+const openCategoriesDialog = () => {
+  categoriesDialogOpen.value = true;
+};
+
+const createCategory = async () => {
+  const name = newCategoryName.value.trim();
+  if (!name) return;
+
+  try {
+    categoriesLoading.value = true;
+    await getElectronAPI().categories.create({ name });
+    newCategoryName.value = '';
+    await loadCategories();
+  } catch (error) {
+    errorHandler(error, 'Не удалось добавить категорию');
+  } finally {
+    categoriesLoading.value = false;
+  }
+};
+
+const startCategoryEdit = async (category: ICategoryItem) => {
+  editingCategory.value = { id: category.id, name: category.name };
+  await nextTick();
+  const input = Array.isArray(categoryEditInputRef.value)
+    ? categoryEditInputRef.value[0]
+    : categoryEditInputRef.value;
+  input?.focus();
+};
+
+const saveCategoryEdit = async () => {
+  if (!editingCategory.value) return;
+
+  const name = editingCategory.value.name.trim();
+  if (!name) {
+    editingCategory.value = null;
+    return;
+  }
+
+  try {
+    await getElectronAPI().categories.update(editingCategory.value.id, { name });
+    editingCategory.value = null;
+    await loadCategories();
+    await productsStore.getList();
+  } catch (error) {
+    errorHandler(error, 'Не удалось обновить категорию');
+  }
+};
+
+const cancelCategoryEdit = () => {
+  editingCategory.value = null;
+};
+
+const deleteCategory = async (category: ICategoryItem) => {
+  try {
+    await getElectronAPI().categories.delete(category.id);
+    await loadCategories();
+    await productsStore.getList();
+  } catch (error) {
+    errorHandler(error, 'Не удалось удалить категорию');
+  }
+};
+
 const formatPrice = (val: number) =>
   val.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -446,6 +679,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 };
 
 onMounted(() => {
+  void loadCategories();
   void productsStore.getList();
   window.addEventListener('keydown', handleKeydown);
 });
@@ -530,6 +764,15 @@ onUnmounted(() => {
   &:hover { background: #2d3139; }
 }
 
+.secondary-btn {
+  background: #eef4ff;
+  color: #1d4ed8 !important;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .table-wrap {
   margin: 16px 24px;
   background: #fff;
@@ -540,7 +783,7 @@ onUnmounted(() => {
 
 .table-header {
   display: grid;
-  grid-template-columns: 1fr 80px 130px 130px 110px 48px;
+  grid-template-columns: minmax(180px, 1fr) 160px 80px 130px 130px 110px 48px;
   padding: 10px 16px;
   background: #f9fafb;
   border-bottom: 1px solid #eaecf0;
@@ -553,7 +796,7 @@ onUnmounted(() => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 1fr 80px 130px 130px 110px 48px;
+  grid-template-columns: minmax(180px, 1fr) 160px 80px 130px 130px 110px 48px;
   padding: 0 16px;
   height: 48px;
   align-items: center;
@@ -584,10 +827,12 @@ onUnmounted(() => {
 }
 
 .col-unit,
+.col-category,
 .col-price,
 .col-kg {
   font-size: 13px;
   color: #344054;
+  min-width: 0;
 }
 
 .col-actions {
@@ -665,6 +910,12 @@ onUnmounted(() => {
   font-variant-numeric: tabular-nums;
 }
 
+.category-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty-value {
   color: #d0d5dd;
 }
@@ -686,6 +937,10 @@ onUnmounted(() => {
   width: 440px;
   border-radius: 12px !important;
   overflow: hidden;
+}
+
+.categories-dialog {
+  width: 520px;
 }
 
 .dialog-header {
@@ -719,6 +974,63 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.category-create-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.category-input {
+  min-width: 0;
+}
+
+.categories-list {
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.category-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #f2f4f7;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.category-name {
+  font-size: 14px;
+  color: #1a1d23;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.edit-btn {
+  color: #4a6cf7 !important;
+}
+
+.empty-categories {
+  padding: 18px;
+  color: #98a2b3;
+  font-size: 14px;
+  text-align: center;
 }
 
 .dialog-input {

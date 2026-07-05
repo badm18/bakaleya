@@ -73,6 +73,26 @@ const migrations = [
         );
     `,
   },
+  {
+    id: 5,
+    name: 'create_categories',
+    sql: `
+      CREATE TABLE IF NOT EXISTS categories (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        name_lower TEXT NOT NULL,
+        deleted_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+    `,
+  },
+  {
+    id: 6,
+    name: 'add_products_main_category_id',
+    sql: `
+      ALTER TABLE products ADD COLUMN main_category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;
+    `,
+  },
 ];
 
 export function runMigrations() {
@@ -108,9 +128,19 @@ export interface Product {
   name: string;
   name_lower: string;
   unit: 'kg' | 'pcs';
+  main_category_id: number | null;
+  main_category_name?: string | null;
   price_buy: number | null;
   price_sell: number | null;
   kg_per_pcs: number | null;
+  deleted_at: string | null;
+  created_at: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
+  name_lower: string;
   deleted_at: string | null;
   created_at: string;
 }

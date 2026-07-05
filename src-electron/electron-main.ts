@@ -6,6 +6,8 @@ import { runMigrations } from './db/index';
 import { registerOrderHandlers } from 'app/src-electron/ipc/orders';
 import { registerProductHandlers } from './ipc/products';
 import { registerCustomerHandlers } from 'app/src-electron/ipc/customers';
+import { registerCategoryHandlers } from './ipc/categories';
+import { registerReportHandlers } from './ipc/reports';
 import { registerPrintHandlers } from 'app/src-electron/ipc/print-window';
 import { initUpdater } from 'app/src-electron/updater';
 import { getErrorLogPath, writeErrorLog } from './logger';
@@ -113,6 +115,8 @@ void app.whenReady().then(() => {
   registerOrderHandlers();
   registerProductHandlers();
   registerCustomerHandlers();
+  registerCategoryHandlers();
+  registerReportHandlers();
   void createWindow();
 
   if (!process.env.DEV) {

@@ -10,6 +10,7 @@
           <q-separator vertical inset />
           <q-route-tab :to="{ name: 'products' }" label="Номенклатура" icon="inventory_2" />
           <q-route-tab :to="{ name: 'customers' }" label="Клиенты" icon="people" />
+          <q-route-tab :to="{ name: 'reports' }" label="Отчеты" icon="bar_chart" />
         </q-tabs>
       </q-toolbar>
     </q-header>

@@ -31,6 +31,11 @@ const routes: RouteRecordRaw[] = [
         name: 'customers',
         component: () => import('pages/customers/pages/CustomersPage.vue'),
       },
+      {
+        path: 'reports',
+        name: 'reports',
+        component: () => import('pages/reports/pages/ReportsPage.vue'),
+      },
     ],
   },
   { path: '/print', name: 'print', component: () => import('pages/print/PrintPage.vue') },
