@@ -9,6 +9,13 @@
           }}</span>
       </div>
       <div class="toolbar-right">
+        <q-toggle
+          v-model="hidePurchasePrices"
+          dense
+          label="Скрывать закупку"
+          class="privacy-toggle"
+          @update:model-value="clearBuyPriceReveal"
+        />
         <div class="search-wrap" :class="{ active: searchActive }">
           <q-input
             ref="searchInputRef"
@@ -171,8 +178,26 @@
                 />
               </template>
               <template v-else>
-                <span v-if="item.price_buy != null" class="price-value">{{ formatPrice(item.price_buy) }} ₽</span>
+                <span v-if="item.price_buy != null" class="price-value">
+                  <template v-if="hidePurchasePrices && revealedBuyPrice !== item.id">•••• ₽</template>
+                  <template v-else>{{ formatPrice(item.price_buy) }} ₽</template>
+                </span>
                 <span v-else class="empty-value">—</span>
+                <q-btn
+                  v-if="hidePurchasePrices && item.price_buy != null"
+                  flat
+                  dense
+                  round
+                  size="xs"
+                  :icon="revealedBuyPrice === item.id ? 'visibility_off' : 'visibility'"
+                  :aria-label="
+                    revealedBuyPrice === item.id
+                      ? 'Скрыть цену закупки'
+                      : 'Показать цену закупки'
+                  "
+                  class="price-eye-btn"
+                  @click.stop="toggleBuyPrice(item.id)"
+                />
               </template>
             </span>
           </div>
@@ -296,12 +321,27 @@
             <q-input
               v-model.number="form.price_buy"
               label="Цена закупки"
-              type="number"
+              :type="hidePurchasePrices && revealedBuyPrice !== 'form' ? 'password' : 'number'"
               step="0.01"
               min="0"
               suffix="₽"
               class="dialog-input"
-            />
+            >
+              <template v-if="hidePurchasePrices" #append>
+                <q-icon
+                  :name="revealedBuyPrice === 'form' ? 'visibility_off' : 'visibility'"
+                  :aria-label="
+                    revealedBuyPrice === 'form' ? 'Скрыть цену закупки' : 'Показать цену закупки'
+                  "
+                  role="button"
+                  tabindex="0"
+                  class="form-price-eye"
+                  @click="toggleBuyPrice('form')"
+                  @keydown.enter.prevent="toggleBuyPrice('form')"
+                  @keydown.space.prevent="toggleBuyPrice('form')"
+                />
+              </template>
+            </q-input>
             <q-input
               v-model.number="form.price_sell"
               label="Цена продажи"
@@ -476,6 +516,24 @@ const search = ref('');
 const searchActive = ref(false);
 const searchInputRef = ref();
 const editInputRef = ref();
+const hidePurchasePrices = ref(true);
+const revealedBuyPrice = ref<number | 'form' | null>(null);
+let buyPriceTimer: number | undefined;
+
+const clearBuyPriceReveal = () => {
+  if (buyPriceTimer !== undefined) window.clearTimeout(buyPriceTimer);
+  buyPriceTimer = undefined;
+  revealedBuyPrice.value = null;
+};
+
+const toggleBuyPrice = (target: number | 'form') => {
+  const wasRevealed = revealedBuyPrice.value === target;
+  clearBuyPriceReveal();
+  if (wasRevealed) return;
+
+  revealedBuyPrice.value = target;
+  buyPriceTimer = window.setTimeout(clearBuyPriceReveal, 10_000);
+};
 
 const dialogOpen = ref(false);
 const deleteDialogOpen = ref(false);
@@ -505,6 +563,7 @@ const categoryOptions = computed(() =>
 );
 
 const openCreateDialog = () => {
+  clearBuyPriceReveal();
   form.value = {
     name: '',
     unit: 'kg',
@@ -517,6 +576,7 @@ const openCreateDialog = () => {
 };
 
 const closeDialog = () => {
+  clearBuyPriceReveal();
   dialogOpen.value = false;
 };
 
@@ -685,6 +745,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  clearBuyPriceReveal();
   window.removeEventListener('keydown', handleKeydown);
 });
 </script>
@@ -730,6 +791,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.privacy-toggle {
+  margin-right: 8px;
+  color: #344054;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .search-wrap {
@@ -908,6 +976,17 @@ onUnmounted(() => {
 
 .price-value {
   font-variant-numeric: tabular-nums;
+}
+
+.price-eye-btn {
+  margin-left: auto;
+  color: #667085;
+  flex-shrink: 0;
+}
+
+.form-price-eye {
+  color: #667085;
+  cursor: pointer;
 }
 
 .category-value {
