@@ -9,3 +9,23 @@ export interface IProductItem {
   kg_per_pcs: number | null;
   created_at: string;
 }
+
+export interface IProductPriceHistoryEntry {
+  id: number;
+  product_id: number;
+  price_buy: number | null;
+  price_sell: number | null;
+  recorded_at: string;
+  source: 'baseline' | 'change';
+}
+
+export interface IProductPriceHistoryResult {
+  entries: IProductPriceHistoryEntry[];
+  hasMore: boolean;
+}
+
+export interface IProductPriceHistoryQuery {
+  from: string | null;
+  to: string | null;
+  before: Pick<IProductPriceHistoryEntry, 'id' | 'recorded_at'> | null;
+}

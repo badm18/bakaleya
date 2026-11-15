@@ -2,7 +2,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   log: {
-    error: (message: string, details?: unknown) => ipcRenderer.send('app:log-error', message, details),
+    error: (message: string, details?: unknown) =>
+      ipcRenderer.send('app:log-error', message, details),
     test: (message = 'TEST_LOG_WRITE') => ipcRenderer.invoke('app:test-log', message),
   },
 
@@ -10,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   products: {
     getAll: () => ipcRenderer.invoke('products:getAll'),
     search: (query: string) => ipcRenderer.invoke('products:search', query),
+    getPriceHistory: (id: number, query: unknown) =>
+      ipcRenderer.invoke('products:getPriceHistory', id, query),
     create: (data: unknown) => ipcRenderer.invoke('products:create', data),
     update: (id: number, data: unknown) => ipcRenderer.invoke('products:update', id, data),
     delete: (id: number) => ipcRenderer.invoke('products:delete', id),

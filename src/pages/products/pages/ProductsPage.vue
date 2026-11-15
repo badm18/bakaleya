@@ -259,6 +259,18 @@
               flat
               dense
               round
+              icon="show_chart"
+              size="md"
+              class="action-btn history-btn"
+              :aria-label="`История цен: ${item.name}`"
+              @click="openPriceHistory(item)"
+            >
+              <q-tooltip>История цен</q-tooltip>
+            </q-btn>
+            <q-btn
+              flat
+              dense
+              round
               icon="delete"
               size="md"
               class="action-btn delete-btn"
@@ -377,6 +389,12 @@
       </q-card>
     </q-dialog>
 
+    <PriceHistoryDialog
+      v-model="historyDialogOpen"
+      :product="historyProduct"
+      :show-purchase-prices="!hidePurchasePrices"
+    />
+
     <!-- Categories Dialog -->
     <q-dialog v-model="categoriesDialogOpen">
       <q-card class="dialog-card categories-dialog">
@@ -481,6 +499,8 @@ import { useProductsStore } from 'stores/products-store';
 import { getElectronAPI } from 'src/utils/electronApi';
 import { errorHandler } from 'src/utils/errorHandler';
 import type { ICategoryItem } from 'src/stores/interfaces/categories-store.interfaces';
+import type { IProductItem } from 'stores/interfaces/products-store.interfaces';
+import PriceHistoryDialog from '../components/PriceHistoryDialog.vue';
 
 const UNIT_LABELS: Record<string, string> = {
   kg: 'кг',
@@ -511,6 +531,13 @@ interface EditingCell {
 }
 
 const productsStore = useProductsStore();
+const historyDialogOpen = ref(false);
+const historyProduct = ref<IProductItem | null>(null);
+
+const openPriceHistory = (product: IProductItem) => {
+  historyProduct.value = product;
+  historyDialogOpen.value = true;
+};
 
 const search = ref('');
 const searchActive = ref(false);
@@ -600,7 +627,10 @@ const saveEdit = async (item: ProductItem) => {
   if (!editingCell.value) return;
 
   const { field, value } = editingCell.value;
-  const normalizedValue = field === 'main_category_id' && value !== '' ? Number(value) : value;
+  const normalizedValue = value !== '' &&
+    (field === 'main_category_id' || field === 'price_buy' || field === 'price_sell' || field === 'kg_per_pcs')
+    ? Number(value)
+    : value;
   const selectedCategory =
     field === 'main_category_id'
       ? categories.value.find((category) => category.id === normalizedValue)
@@ -851,7 +881,7 @@ onUnmounted(() => {
 
 .table-header {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 160px 80px 130px 130px 110px 48px;
+  grid-template-columns: minmax(180px, 1fr) 160px 80px 130px 130px 110px 80px;
   padding: 10px 16px;
   background: #f9fafb;
   border-bottom: 1px solid #eaecf0;
@@ -864,7 +894,7 @@ onUnmounted(() => {
 
 .table-row {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 160px 80px 130px 130px 110px 48px;
+  grid-template-columns: minmax(180px, 1fr) 160px 80px 130px 130px 110px 80px;
   padding: 0 16px;
   height: 48px;
   align-items: center;
@@ -909,10 +939,11 @@ onUnmounted(() => {
 }
 
 .action-btn {
-  opacity: 0;
+  opacity: 0.65;
   transition: opacity 0.1s;
 }
 
+.history-btn { color: #4a6cf7 !important; }
 .delete-btn { color: #f04438 !important; }
 
 .editable-cell {

@@ -1,8 +1,16 @@
-import type { IProductItem } from 'stores/interfaces/products-store.interfaces';
+import type {
+  IProductItem,
+  IProductPriceHistoryQuery,
+  IProductPriceHistoryResult,
+} from 'stores/interfaces/products-store.interfaces';
 import type { ICustomerItem } from 'stores/interfaces/customers-store.interfaces';
 import type { ICategoryItem } from 'stores/interfaces/categories-store.interfaces';
 import type { IRevenueByCategoryReport } from 'stores/interfaces/reports-store.interfaces';
-import type { IOrderDetail, IOrderItem, IOrderData } from 'stores/interfaces/orders-store.interfaces';
+import type {
+  IOrderDetail,
+  IOrderItem,
+  IOrderData,
+} from 'stores/interfaces/orders-store.interfaces';
 
 export {};
 
@@ -22,6 +30,10 @@ declare global {
           items: IProductItem[];
           total: number;
         }>;
+        getPriceHistory: (
+          id: number,
+          query: IProductPriceHistoryQuery,
+        ) => Promise<IProductPriceHistoryResult>;
         create: (data: unknown) => Promise<unknown>;
         update: (id: number, data: unknown) => Promise<unknown>;
         delete: (id: number) => Promise<unknown>;

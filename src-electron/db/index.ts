@@ -93,6 +93,35 @@ const migrations = [
       ALTER TABLE products ADD COLUMN main_category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL;
     `,
   },
+  {
+    id: 7,
+    name: 'create_product_price_history',
+    sql: `
+      CREATE TABLE product_price_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+        price_buy REAL,
+        price_sell REAL,
+        recorded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
+        source TEXT NOT NULL CHECK(source IN ('baseline', 'change'))
+      );
+      CREATE INDEX idx_product_price_history_product_id
+        ON product_price_history(product_id, id);
+
+      INSERT INTO product_price_history (product_id, price_buy, price_sell, source)
+      SELECT id, price_buy, price_sell, 'baseline'
+      FROM products
+      WHERE deleted_at IS NULL AND (price_buy IS NOT NULL OR price_sell IS NOT NULL);
+    `,
+  },
+  {
+    id: 8,
+    name: 'index_product_price_history_by_date',
+    sql: `
+      CREATE INDEX idx_product_price_history_date
+        ON product_price_history(product_id, recorded_at, id);
+    `,
+  },
 ];
 
 export function runMigrations() {
@@ -135,6 +164,15 @@ export interface Product {
   kg_per_pcs: number | null;
   deleted_at: string | null;
   created_at: string;
+}
+
+export interface ProductPriceHistoryEntry {
+  id: number;
+  product_id: number;
+  price_buy: number | null;
+  price_sell: number | null;
+  recorded_at: string;
+  source: 'baseline' | 'change';
 }
 
 export interface Category {
