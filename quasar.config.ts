@@ -185,6 +185,13 @@ export default defineConfig((/* ctx */) => {
         win: {
           target: 'nsis',
         },
+        linux: {
+          target: 'deb',
+          category: 'Office',
+        },
+        deb: {
+          packageName: 'bakaleya',
+        },
         nsis: {
           oneClick: false,
           shortcutName: 'Bakaleya',

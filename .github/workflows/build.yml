@@ -1,4 +1,4 @@
-name: Build Windows
+name: Build Windows and Linux
 
 on:
   push:
@@ -43,3 +43,46 @@ jobs:
             dist/electron/Packaged/*.yml
             dist/electron/Packaged/*.blockmap
           retention-days: 30
+
+  build-linux:
+    # Publish after Windows so both jobs do not create the same release at once.
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rebuild native modules
+        run: npm run rebuild
+
+      - name: Build and publish
+        run: npm run build -- -P always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Linux release files
+        run: |
+          ls dist/electron/Packaged/*.deb
+          test -f dist/electron/Packaged/latest-linux.yml
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bakaleya-linux-deb
+          path: |
+            dist/electron/Packaged/*.deb
+            dist/electron/Packaged/*.yml
+            dist/electron/Packaged/*.blockmap
+          retention-days: 30
+          if-no-files-found: error
