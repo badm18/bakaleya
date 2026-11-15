@@ -54,9 +54,7 @@ export function registerOrderHandlers() {
       `);
 
       const transaction = db.transaction(() => {
-        const { lastInsertRowid } = insertOrder.run(
-          order as Pick<Order, 'organization_name' | 'customer_id' | 'customer_name'>,
-        );
+        const { lastInsertRowid } = insertOrder.run(order);
         for (const item of items as Omit<OrderItem, 'id' | 'order_id'>[]) {
           insertItem.run({ ...item, order_id: lastInsertRowid });
         }

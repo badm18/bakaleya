@@ -496,6 +496,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { useProductsStore } from 'stores/products-store';
+import type { IProductCreate } from 'stores/products-store';
 import { getElectronAPI } from 'src/utils/electronApi';
 import { errorHandler } from 'src/utils/errorHandler';
 import type { ICategoryItem } from 'src/stores/interfaces/categories-store.interfaces';
@@ -573,13 +574,13 @@ const newCategoryName = ref('');
 const editingCategory = ref<{ id: number; name: string } | null>(null);
 const categoryEditInputRef = ref();
 
-const form = ref({
+const form = ref<IProductCreate>({
   name: '',
-  unit: 'kg' as 'kg' | 'pcs',
-  main_category_id: null as number | null,
-  price_buy: null as number | null,
-  price_sell: null as number | null,
-  kg_per_pcs: null as number | null,
+  unit: 'kg',
+  main_category_id: null,
+  price_buy: null,
+  price_sell: null,
+  kg_per_pcs: null,
 });
 
 const categoryOptions = computed(() =>

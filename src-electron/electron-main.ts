@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url'
@@ -92,7 +92,7 @@ if (gotSingleInstanceLock) {
   });
 }
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) {
     return;
   }
@@ -110,7 +110,17 @@ void app.whenReady().then(() => {
     return getErrorLogPath();
   });
 
-  runMigrations();
+  try {
+    await runMigrations();
+  } catch (error) {
+    writeErrorLog('Database migration or backup failed', error);
+    dialog.showErrorBox(
+      'Не удалось открыть базу данных',
+      `Обновление базы остановлено. Данные находятся в ${app.getPath('userData')}.\n\n${String(error)}`,
+    );
+    app.quit();
+    return;
+  }
   registerPrintHandlers();
   registerOrderHandlers();
   registerProductHandlers();

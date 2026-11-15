@@ -1,8 +1,11 @@
 import { app } from 'electron';
 import Database from 'better-sqlite3';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'path';
+import { randomUUID } from 'node:crypto';
 
 const dbPath = path.join(app.getPath('userData'), 'database.db');
+const databaseExisted = existsSync(dbPath);
 console.log(dbPath);
 const db = new Database(dbPath);
 
@@ -124,7 +127,46 @@ const migrations = [
   },
 ];
 
-export function runMigrations() {
+export async function runMigrations() {
+  // Keep a restorable snapshot of the old schema before changing an existing database.
+  const hasMigrationTable = db.prepare(
+    "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'migrations'",
+  ).get();
+  const appliedIds = new Set<number>(
+    hasMigrationTable
+      ? (db.prepare('SELECT id FROM migrations').all() as { id: number }[]).map(({ id }) => id)
+      : [],
+  );
+
+  const backupDir = path.join(app.getPath('userData'), 'backups');
+  const version = app.getVersion().replace(/[^a-zA-Z0-9.-]/g, '_');
+  const markerPath = path.join(backupDir, `backup-for-${version}.txt`);
+  const recordedBackup = existsSync(markerPath) ? readFileSync(markerPath, 'utf8').trim() : '';
+  const hasVersionBackup = recordedBackup !== '' &&
+    path.basename(recordedBackup) === recordedBackup &&
+    existsSync(path.join(backupDir, recordedBackup));
+  const hasPendingMigrations = migrations.some(({ id }) => !appliedIds.has(id));
+
+  if (databaseExisted && (hasPendingMigrations || !hasVersionBackup)) {
+    mkdirSync(backupDir, { recursive: true });
+    const backupPath = path.join(
+      backupDir,
+      `database-before-${version}-${new Date().toISOString().replace(/[:.]/g, '-')}-${randomUUID()}.db`,
+    );
+
+    // SQLite's backup API includes committed data still held in the WAL file.
+    await db.backup(backupPath);
+    const backup = new Database(backupPath, { readonly: true, fileMustExist: true });
+    try {
+      if (backup.pragma('quick_check', { simple: true }) !== 'ok') {
+        throw new Error(`Проверка резервной копии не прошла: ${backupPath}`);
+      }
+    } finally {
+      backup.close();
+    }
+    writeFileSync(markerPath, path.basename(backupPath), 'utf8');
+  }
+
   const apply = db.transaction(() => {
     db.exec(`
       CREATE TABLE IF NOT EXISTS migrations (

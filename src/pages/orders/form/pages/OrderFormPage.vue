@@ -240,11 +240,16 @@ const ordersStore = useOrdersStore();
 
 const isEdit = computed(() => !!route.params.id);
 
-const form = ref({
-  organization_name: ORGANIZATIONS[0] as string,
-  customer_id: null as number | null,
+const form = ref<{
+  organization_name: string;
+  customer_id: number | null;
+  customer_name: string;
+  items: OrderItemForm[];
+}>({
+  organization_name: ORGANIZATIONS[0],
+  customer_id: null,
   customer_name: '',
-  items: [] as OrderItemForm[],
+  items: [],
 });
 
 const selectedCustomer = ref<CustomerOption | null>(null);
