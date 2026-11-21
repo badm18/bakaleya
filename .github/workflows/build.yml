@@ -7,7 +7,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -29,10 +33,15 @@ jobs:
       - name: Rebuild native modules
         run: npm run rebuild
 
-      - name: Build and publish
-        run: npm run build -- -P always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Windows installer
+        run: npm run build -- -P never
+
+      - name: Verify Windows release files
+        shell: bash
+        run: |
+          ls dist/electron/Packaged/*.exe
+          ls dist/electron/Packaged/*.blockmap
+          test -f dist/electron/Packaged/latest.yml
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -43,11 +52,9 @@ jobs:
             dist/electron/Packaged/*.yml
             dist/electron/Packaged/*.blockmap
           retention-days: 30
+          if-no-files-found: error
 
   build-linux:
-    # Publish after Windows so both jobs do not create the same release at once.
-    needs: build
-    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
 
     steps:
@@ -66,10 +73,8 @@ jobs:
       - name: Rebuild native modules
         run: npm run rebuild
 
-      - name: Build and publish
-        run: npm run build -- -P always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Linux package
+        run: npm run build -- -P never
 
       - name: Verify Linux release files
         run: |
@@ -86,3 +91,68 @@ jobs:
             dist/electron/Packaged/*.blockmap
           retention-days: 30
           if-no-files-found: error
+
+  publish:
+    needs: [build, build-linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches application version
+        run: |
+          package_version=$(node -p "require('./package.json').version")
+          test "$GITHUB_REF_NAME" = "v$package_version"
+
+      - name: Download Windows files
+        uses: actions/download-artifact@v4
+        with:
+          name: bakaleya-windows
+          path: release/windows
+
+      - name: Download Linux files
+        uses: actions/download-artifact@v4
+        with:
+          name: bakaleya-linux-deb
+          path: release/linux
+
+      - name: Verify release files
+        run: |
+          shopt -s nullglob
+          windows_installers=(release/windows/*.exe)
+          windows_blockmaps=(release/windows/*.blockmap)
+          linux_packages=(release/linux/*.deb)
+          test "${#windows_installers[@]}" -gt 0
+          test "${#windows_blockmaps[@]}" -gt 0
+          test "${#linux_packages[@]}" -gt 0
+          test -f release/windows/latest.yml
+          test -f release/linux/latest-linux.yml
+
+      - name: Create or update one draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(
+            release/windows/*.exe
+            release/windows/*.blockmap
+            release/windows/latest.yml
+            release/linux/*.deb
+            release/linux/*.blockmap
+            release/linux/latest-linux.yml
+          )
+
+          if draft=$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$draft" != true ]; then
+              echo "Release $GITHUB_REF_NAME is already published" >&2
+              exit 1
+            fi
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" --draft --verify-tag --title "$GITHUB_REF_NAME" --notes ""
+          fi
