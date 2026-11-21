@@ -193,6 +193,7 @@ export default defineConfig((/* ctx */) => {
           packageName: 'bakaleya',
         },
         nsis: {
+          artifactName: '${productName}-Setup-${version}.${ext}',
           oneClick: false,
           shortcutName: 'Bakaleya',
           allowToChangeInstallationDirectory: true,

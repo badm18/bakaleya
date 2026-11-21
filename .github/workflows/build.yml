@@ -129,6 +129,8 @@ jobs:
       - name: Verify release files
         run: |
           shopt -s nullglob
+          package_version=$(node -p "require('./package.json').version")
+          installer_name="Bakaleya-Setup-${package_version}.exe"
           windows_installers=(release/windows/*.exe)
           windows_blockmaps=(release/windows/*.blockmap)
           linux_packages=(release/linux/*.deb)
@@ -137,6 +139,10 @@ jobs:
           test "${#linux_packages[@]}" -gt 0
           test -f release/windows/latest.yml
           test -f release/linux/latest-linux.yml
+          test -f "release/windows/$installer_name"
+          test -f "release/windows/$installer_name.blockmap"
+          grep -Fqx "  - url: $installer_name" release/windows/latest.yml
+          grep -Fqx "path: $installer_name" release/windows/latest.yml
 
       - name: Create or update one draft release
         env:
