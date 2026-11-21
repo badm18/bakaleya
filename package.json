@@ -1,6 +1,6 @@
 {
   "name": "bakaleya",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "A Quasar Project",
   "productName": "Bakaleya",
   "author": "mikhail <shattilov@mail.ru>",
@@ -13,6 +13,7 @@
     "dev": "quasar dev -m electron -- --no-sandbox --disable-setuid-sandbox",
     "dev:web": "quasar dev",
     "build": "quasar build -m electron",
+    "postbuild": "node tests/verify-renderer-build.mjs",
     "release:patch": "npm version patch && git push origin main --follow-tags",
     "release:minor": "npm version minor && git push origin main --follow-tags",
     "postinstall": "quasar prepare",
@@ -51,7 +52,6 @@
     "vue-tsc": "3.3.14"
   },
   "overrides": {
-    "rolldown": "1.3.2",
     "qs": "6.17.1"
   },
   "engines": {

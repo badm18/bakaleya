@@ -36,6 +36,9 @@ jobs:
       - name: Build Windows installer
         run: npm run build -- -P never
 
+      - name: Verify renderer JavaScript
+        run: node tests/verify-renderer-build.mjs
+
       - name: Verify Windows release files
         shell: bash
         run: |
@@ -75,6 +78,9 @@ jobs:
 
       - name: Build Linux package
         run: npm run build -- -P never
+
+      - name: Verify renderer JavaScript
+        run: node tests/verify-renderer-build.mjs
 
       - name: Verify Linux release files
         run: |
