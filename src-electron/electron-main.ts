@@ -127,10 +127,10 @@ void app.whenReady().then(async () => {
   registerCustomerHandlers();
   registerCategoryHandlers();
   registerReportHandlers();
-  void createWindow();
+  await createWindow();
 
   if (!process.env.DEV) {
-    initUpdater();
+    initUpdater(() => mainWindow);
   }
 });
 

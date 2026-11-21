@@ -17,6 +17,16 @@ export {};
 declare global {
   interface Window {
     electronAPI: {
+      updates: {
+        onDownloadState: (
+          callback: (state: {
+            status: 'starting' | 'downloading' | 'downloaded' | 'error';
+            percent: number;
+            transferred: number;
+            total: number;
+          }) => void,
+        ) => () => void;
+      };
       log: {
         error: (message: string, details?: unknown) => void;
         test: (message?: string) => Promise<string>;

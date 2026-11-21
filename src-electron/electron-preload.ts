@@ -1,6 +1,21 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  updates: {
+    onDownloadState: (
+      callback: (state: {
+        status: 'starting' | 'downloading' | 'downloaded' | 'error';
+        percent: number;
+        transferred: number;
+        total: number;
+      }) => void,
+    ) => {
+      const listener = (_event: Electron.IpcRendererEvent, state: Parameters<typeof callback>[0]) =>
+        callback(state);
+      ipcRenderer.on('app:update-download-state', listener);
+      return () => ipcRenderer.removeListener('app:update-download-state', listener);
+    },
+  },
   log: {
     error: (message: string, details?: unknown) =>
       ipcRenderer.send('app:log-error', message, details),
